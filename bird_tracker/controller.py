@@ -41,6 +41,12 @@ class BirdTrackerState(app_callback_class):
     def __init__(self):
         super().__init__()
 
+        # Establish the intended position before opening serial. The controller
+        # may reset as the port opens, so startup repeatedly sends these values
+        # until its boot window has elapsed.
+        self.pan_angle = config.HOME_PAN
+        self.tilt_angle = config.HOME_TILT
+
         self.serial_port = find_servo_port()
         try:
             if self.serial_port is None:
@@ -58,13 +64,10 @@ class BirdTrackerState(app_callback_class):
                 f"[SERVO] Connected to {self.serial_port} "
                 f"at {config.SERIAL_BAUD} baud"
             )
-            time.sleep(2.0)
+            self._home_on_startup()
         except serial.SerialException as error:
             print(f"[WARN] Servo control disabled: {error}")
             self.ser = None
-
-        self.pan_angle = config.HOME_PAN
-        self.tilt_angle = config.HOME_TILT
 
         self.lock = threading.Lock()
         self.bird_present = False
@@ -83,9 +86,22 @@ class BirdTrackerState(app_callback_class):
 
         self._detached = False
         self._running = True
-        self._send(self.pan_angle, self.tilt_angle)
         self._thread = threading.Thread(target=self._control_loop, daemon=True)
         self._thread.start()
+
+    def _home_on_startup(self):
+        """Keep asserting home while the serial controller finishes booting."""
+        deadline = time.monotonic() + config.STARTUP_HOME_DURATION
+        while True:
+            self._send(self.pan_angle, self.tilt_angle)
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(config.STARTUP_HOME_INTERVAL)
+
+        print(
+            f"[SERVO] Homed to pan={self.pan_angle + 90:g}, "
+            f"tilt={self.tilt_angle + 90:g}"
+        )
 
     def _send(self, pan_degrees, tilt_degrees):
         if self.ser is None:

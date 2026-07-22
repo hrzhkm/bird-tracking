@@ -25,6 +25,8 @@ MAX_STEP = 1.5
 DEADZONE = 0.05
 CONTROL_DT = 0.02
 HOME_TIMEOUT = 5.0
+STARTUP_HOME_DURATION = 2.0
+STARTUP_HOME_INTERVAL = 0.25
 
 # Physical limits enforced by the ESP32, expressed in normal servo coordinates.
 PAN_SERVO_MIN, PAN_SERVO_MAX = 10, 170
