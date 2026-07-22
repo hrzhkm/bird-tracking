@@ -62,14 +62,16 @@ class BirdTrackerState(app_callback_class):
             print(f"[WARN] Servo control disabled: {error}")
             self.ser = None
 
-        self.pan_angle = 0.0
-        self.tilt_angle = 0.0
+        self.pan_angle = config.HOME_PAN
+        self.tilt_angle = config.HOME_TILT
 
         self.lock = threading.Lock()
         self.bird_present = False
         self.target_error_x = 0.0
         self.target_error_y = 0.0
-        self.last_bird_time = 0.0
+        # Give the servos time to physically reach home before the idle
+        # controller detaches them.
+        self.last_bird_time = time.time()
         self.new_frame = False
 
         # Callback-only sticky aim point used to select the nearest target.
@@ -78,7 +80,7 @@ class BirdTrackerState(app_callback_class):
 
         self._detached = False
         self._running = True
-        self._send(0.0, 0.0)
+        self._send(self.pan_angle, self.tilt_angle)
         self._thread = threading.Thread(target=self._control_loop, daemon=True)
         self._thread.start()
 
@@ -86,8 +88,12 @@ class BirdTrackerState(app_callback_class):
         if self.ser is None:
             return
 
-        pan_wire = int(round(clamp(pan_degrees, -90, 90) + 90))
-        tilt_wire = int(round(clamp(tilt_degrees, -90, 90) + 90))
+        pan_wire = int(
+            round(clamp(pan_degrees, config.PAN_MIN, config.PAN_MAX) + 90)
+        )
+        tilt_wire = int(
+            round(clamp(tilt_degrees, config.TILT_MIN, config.TILT_MAX) + 90)
+        )
         try:
             self.ser.write(f"{pan_wire},{tilt_wire}\n".encode())
         except serial.SerialException as error:
@@ -144,14 +150,14 @@ class BirdTrackerState(app_callback_class):
 
     def _home_step(self):
         moved = False
-        if abs(self.pan_angle) > 0.5:
+        if abs(self.pan_angle - config.HOME_PAN) > 0.01:
             self.pan_angle = move_toward(
-                self.pan_angle, 0.0, config.MAX_STEP
+                self.pan_angle, config.HOME_PAN, config.MAX_STEP
             )
             moved = True
-        if abs(self.tilt_angle) > 0.5:
+        if abs(self.tilt_angle - config.HOME_TILT) > 0.01:
             self.tilt_angle = move_toward(
-                self.tilt_angle, 0.0, config.MAX_STEP
+                self.tilt_angle, config.HOME_TILT, config.MAX_STEP
             )
             moved = True
         return moved
@@ -164,4 +170,3 @@ class BirdTrackerState(app_callback_class):
         self._detach()
         if self.ser is not None:
             self.ser.close()
-

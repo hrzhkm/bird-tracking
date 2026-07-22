@@ -21,9 +21,27 @@ DEADZONE = 0.05
 CONTROL_DT = 0.02
 HOME_TIMEOUT = 5.0
 
-# Angles use an internal -90..+90 convention, where 0 is centered.
-PAN_MIN, PAN_MAX = -90, 90
-TILT_MIN, TILT_MAX = -90, 90
+# Physical limits enforced by the ESP32, expressed in normal servo coordinates.
+PAN_SERVO_MIN, PAN_SERVO_MAX = 10, 170
+TILT_SERVO_MIN, TILT_SERVO_MAX = 20, 120
+
+# The Python controller uses -90..+90 internally, where 0 is servo position 90.
+PAN_MIN, PAN_MAX = PAN_SERVO_MIN - 90, PAN_SERVO_MAX - 90
+TILT_MIN, TILT_MAX = TILT_SERVO_MIN - 90, TILT_SERVO_MAX - 90
+
+# Home values in .env use normal 0..180 servo coordinates. Convert them to
+# the controller's internal -90..+90 coordinates here.
+HOME_PAN = float(os.environ.get("BIRD_HOME_PAN", "70")) - 90.0
+HOME_TILT = float(os.environ.get("BIRD_HOME_TILT", "80")) - 90.0
+
+if not PAN_MIN <= HOME_PAN <= PAN_MAX:
+    raise ValueError(
+        f"BIRD_HOME_PAN must be between {PAN_SERVO_MIN} and {PAN_SERVO_MAX}"
+    )
+if not TILT_MIN <= HOME_TILT <= TILT_MAX:
+    raise ValueError(
+        f"BIRD_HOME_TILT must be between {TILT_SERVO_MIN} and {TILT_SERVO_MAX}"
+    )
 
 # Detection. Hailo's COCO label table uses class ID 15 for "bird".
 BIRD_CLASS_ID = 15

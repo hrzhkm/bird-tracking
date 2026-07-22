@@ -38,6 +38,10 @@ You can replace `usb` with a specific device such as `/dev/video0`. A command-li
 inference and the tracking callback. The default is `0.20`; increase it if the
 tracker produces false bird detections.
 
+`BIRD_HOME_TILT` and `BIRD_HOME_PAN` set the home position in normal `0..180`
+servo coordinates. The configured defaults are tilt `80` and pan `70`. Values
+must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
+
 You can also select the servo controller there, preferably using its stable USB
 ID:
 
