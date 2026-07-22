@@ -43,5 +43,30 @@ fi
 export HAILO_EXAMPLES_DIR
 export PYTHONPATH="${HAILO_EXAMPLES_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 
+# Fail clearly instead of silently running with a missing or wrong accelerator.
+if ! command -v hailortcli >/dev/null 2>&1; then
+    echo "hailortcli not found; HailoRT is required for accelerated inference." >&2
+    exit 1
+fi
+
+HAILO_SCAN="$(hailortcli scan 2>&1)"
+if ! grep -q "Device:" <<<"${HAILO_SCAN}"; then
+    echo "No Hailo accelerator detected; refusing to start CPU-only tracking." >&2
+    echo "${HAILO_SCAN}" >&2
+    exit 1
+fi
+
+# The installed board reports HAILO8 (26 TOPS). Catch an accidental HAILO8L
+# resource selection before GStreamer starts with an incompatible HEF.
+HAILO_ID="$(hailortcli fw-control identify 2>&1 | tr -d '\000')"
+HAILO_DEVICE_ARCH="$(sed -n 's/^Device Architecture: //p' <<<"${HAILO_ID}" | head -n 1)"
+EXPECTED_ARCH="${hailo_arch^^}"
+if [[ -n "${EXPECTED_ARCH}" && -n "${HAILO_DEVICE_ARCH}" && "${EXPECTED_ARCH}" != "${HAILO_DEVICE_ARCH}" ]]; then
+    echo "Hailo architecture mismatch: .env selects ${EXPECTED_ARCH}, device is ${HAILO_DEVICE_ARCH}." >&2
+    exit 1
+fi
+
+echo "[HAILO] ${HAILO_DEVICE_ARCH:-accelerator detected}; inference will run on ${HAILO_SCAN#*Device: }"
+
 cd "${SCRIPT_DIR}"
-exec "${PYTHON_BIN}" -m bird_tracker --input usb --frame-rate 15 "$@"
+exec "${PYTHON_BIN}" -m bird_tracker "$@"

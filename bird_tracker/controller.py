@@ -83,6 +83,7 @@ class BirdTrackerState(app_callback_class):
         self.aim_y = 0.5
         self.last_bird_bbox = None
         self.last_bird_confidence = 0.0
+        self.last_detection_debug_time = 0.0
 
         self._detached = False
         self._running = True

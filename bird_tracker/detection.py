@@ -32,6 +32,14 @@ def app_callback(pad, info, user_data):
     roi = hailo.get_roi_from_buffer(buffer)
     detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
 
+    if config.DETECTION_DEBUG and time.time() - user_data.last_detection_debug_time >= 1.0:
+        summary = ", ".join(
+            f"{detection.get_label()!r}:{detection.get_confidence():.2f}"
+            for detection in detections[:10]
+        )
+        print(f"[DETECTIONS] {summary or 'none'}", flush=True)
+        user_data.last_detection_debug_time = time.time()
+
     birds = []
     for detection in detections:
         label = detection.get_label()

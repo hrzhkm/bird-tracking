@@ -54,6 +54,25 @@ if not TILT_MIN <= HOME_TILT <= TILT_MAX:
 BIRD_CLASS_ID = 15
 CONF_THRESH = float(os.environ.get("BIRD_CONFIDENCE", "0.20"))
 DETECTION_HOLD = float(os.environ.get("BIRD_DETECTION_HOLD", "1.0"))
+DETECTION_DEBUG = os.environ.get("BIRD_DETECTION_DEBUG", "0") == "1"
+
+# Hailo metadata tracker. This bridges short YOLO misses and keeps the target
+# identity stable while the camera is moving. Inference itself still runs on
+# the Hailo-8; the tracker operates on the resulting detection metadata.
+TRACKER_KEEP_NEW_FRAMES = int(os.environ.get("BIRD_TRACKER_KEEP_NEW_FRAMES", "3"))
+TRACKER_KEEP_TRACKED_FRAMES = int(
+    os.environ.get("BIRD_TRACKER_KEEP_TRACKED_FRAMES", "40")
+)
+TRACKER_KEEP_LOST_FRAMES = int(
+    os.environ.get("BIRD_TRACKER_KEEP_LOST_FRAMES", "10")
+)
 
 if DETECTION_HOLD < 0:
     raise ValueError("BIRD_DETECTION_HOLD cannot be negative")
+
+if min(
+    TRACKER_KEEP_NEW_FRAMES,
+    TRACKER_KEEP_TRACKED_FRAMES,
+    TRACKER_KEEP_LOST_FRAMES,
+) < 0:
+    raise ValueError("BIRD tracker frame counts cannot be negative")

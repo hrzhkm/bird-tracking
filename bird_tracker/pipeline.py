@@ -8,6 +8,7 @@ from hailo_apps.hailo_app_python.core.gstreamer.gstreamer_helper_pipelines impor
     INFERENCE_PIPELINE,
     INFERENCE_PIPELINE_WRAPPER,
     SOURCE_PIPELINE,
+    TRACKER_PIPELINE,
     USER_CALLBACK_PIPELINE,
 )
 
@@ -15,7 +16,7 @@ from . import config
 
 
 class LowLatencyDetectionApp(GStreamerDetectionApp):
-    """Detection pipeline without Hailo's redundant native object tracker."""
+    """Low-latency Hailo detection with metadata object tracking."""
 
     def get_pipeline_string(self):
         source_pipeline = SOURCE_PIPELINE(
@@ -43,6 +44,14 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             inference_pipeline,
             bypass_max_size_buffers=3,
         )
+        tracker_pipeline = TRACKER_PIPELINE(
+            class_id=config.BIRD_CLASS_ID,
+            keep_new_frames=config.TRACKER_KEEP_NEW_FRAMES,
+            keep_tracked_frames=config.TRACKER_KEEP_TRACKED_FRAMES,
+            keep_lost_frames=config.TRACKER_KEEP_LOST_FRAMES,
+            keep_past_metadata=True,
+            qos=False,
+        )
         callback_pipeline = USER_CALLBACK_PIPELINE()
         display_pipeline = DISPLAY_PIPELINE(
             video_sink=config.VIDEO_SINK,
@@ -54,13 +63,14 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             f"{source_pipeline} ! "
             f"{inference_wrapper} ! "
             f"{callback_pipeline} ! "
+            f"{tracker_pipeline} ! "
             f"{display_pipeline}"
         )
-        pipeline = pipeline.replace("leaky=no", "leaky=downstream")
         print(
             "[BIRD TRACKER] "
             f"confidence={config.CONF_THRESH:.2f}, "
             f"fps={self.frame_rate}, batch=1, "
-            f"native-tracker=off, sink={config.VIDEO_SINK}"
+            f"hailo-tracker=on/{config.TRACKER_KEEP_TRACKED_FRAMES}-frames, "
+            f"sink={config.VIDEO_SINK}"
         )
         return pipeline
