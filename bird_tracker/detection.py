@@ -41,9 +41,7 @@ def app_callback(pad, info, user_data):
             bbox = detection.get_bbox()
             center_x = bbox.xmin() + bbox.width() / 2.0
             center_y = bbox.ymin() + bbox.height() / 2.0
-            birds.append((center_x, center_y))
-        else:
-            roi.remove_object(detection)
+            birds.append((center_x, center_y, bbox, confidence))
 
     tracked = None
     if birds:
@@ -54,19 +52,48 @@ def app_callback(pad, info, user_data):
                 + (bird[1] - user_data.aim_y) ** 2
             ),
         )
-        center_x, center_y = tracked
+        center_x, center_y, bbox, confidence = tracked
         user_data.aim_x, user_data.aim_y = center_x, center_y
+        user_data.last_bird_bbox = (
+            bbox.xmin(),
+            bbox.ymin(),
+            bbox.width(),
+            bbox.height(),
+        )
+        user_data.last_bird_confidence = confidence
         with user_data.lock:
+            was_present = user_data.bird_present
             user_data.target_error_x = center_x - 0.5
             user_data.target_error_y = center_y - 0.5
             user_data.bird_present = True
             user_data.last_bird_time = time.time()
             user_data.new_frame = True
+        if not was_present:
+            print(f"[BIRD] Target acquired ({confidence:.2f})")
     else:
         now = time.time()
         with user_data.lock:
-            user_data.bird_present = False
+            was_present = user_data.bird_present
             last_seen = user_data.last_bird_time
+            holding_detection = now - last_seen <= config.DETECTION_HOLD
+            user_data.bird_present = holding_detection
+
+        # Preserve only the visual box during brief model misses. The control
+        # thread receives no fresh-frame flag, so stale positions do not move
+        # the servos.
+        if holding_detection and user_data.last_bird_bbox is not None:
+            xmin, ymin, box_width, box_height = user_data.last_bird_bbox
+            held_bbox = hailo.HailoBBox(xmin, ymin, box_width, box_height)
+            held_detection = hailo.HailoDetection(
+                held_bbox,
+                config.BIRD_CLASS_ID,
+                "bird",
+                user_data.last_bird_confidence,
+            )
+            roi.add_object(held_detection)
+        elif was_present:
+            print("[BIRD] Target lost")
+
         if now - last_seen > config.HOME_TIMEOUT:
             user_data.aim_x, user_data.aim_y = 0.5, 0.5
 
@@ -115,4 +142,3 @@ def app_callback(pad, info, user_data):
         user_data.set_frame(frame)
 
     return Gst.PadProbeReturn.OK
-

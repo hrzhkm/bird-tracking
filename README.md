@@ -34,9 +34,15 @@ BIRD_VIDEO_SOURCE=usb
 You can replace `usb` with a specific device such as `/dev/video0`. A command-line
 `--input` argument overrides the `.env` value for one run.
 
+`BIRD_VIDEO_SINK=ximagesink` provides a stable X11/VNC display path.
+`BIRD_FRAME_RATE=20` limits inference and DMA pressure on the Raspberry Pi.
+
 `BIRD_CONFIDENCE` controls the minimum bird confidence used by both Hailo
 inference and the tracking callback. The default is `0.20`; increase it if the
 tracker produces false bird detections.
+
+`BIRD_DETECTION_HOLD=1.0` keeps the most recent valid bird box visible across
+brief inference misses without moving the servos from stale coordinates.
 
 `BIRD_HOME_TILT` and `BIRD_HOME_PAN` set the home position in normal `0..180`
 servo coordinates. The configured defaults are tilt `80` and pan `70`. Values

@@ -5,6 +5,11 @@ import os
 
 # Video input. "usb" asks the Hailo pipeline to discover a USB camera.
 VIDEO_SOURCE = os.environ.get("BIRD_VIDEO_SOURCE", "usb")
+VIDEO_SINK = os.environ.get("BIRD_VIDEO_SINK", "ximagesink")
+FRAME_RATE = int(os.environ.get("BIRD_FRAME_RATE", "20"))
+
+if FRAME_RATE <= 0:
+    raise ValueError("BIRD_FRAME_RATE must be greater than zero")
 
 # Serial controller
 SERIAL_PORT = os.environ.get("BIRD_SERVO_PORT")
@@ -46,3 +51,7 @@ if not TILT_MIN <= HOME_TILT <= TILT_MAX:
 # Detection. Hailo's COCO label table uses class ID 15 for "bird".
 BIRD_CLASS_ID = 15
 CONF_THRESH = float(os.environ.get("BIRD_CONFIDENCE", "0.20"))
+DETECTION_HOLD = float(os.environ.get("BIRD_DETECTION_HOLD", "1.0"))
+
+if DETECTION_HOLD < 0:
+    raise ValueError("BIRD_DETECTION_HOLD cannot be negative")

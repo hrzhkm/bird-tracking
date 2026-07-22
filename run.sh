@@ -44,4 +44,4 @@ export HAILO_EXAMPLES_DIR
 export PYTHONPATH="${HAILO_EXAMPLES_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 
 cd "${SCRIPT_DIR}"
-exec "${PYTHON_BIN}" -m bird_tracker "$@"
+exec "${PYTHON_BIN}" -m bird_tracker --input usb --frame-rate 15 "$@"

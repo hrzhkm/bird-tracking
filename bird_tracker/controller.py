@@ -50,6 +50,7 @@ class BirdTrackerState(app_callback_class):
             self.ser = serial.Serial()
             self.ser.port = self.serial_port
             self.ser.baudrate = config.SERIAL_BAUD
+            self.ser.timeout = 0
             self.ser.dtr = False
             self.ser.rts = False
             self.ser.open()
@@ -77,6 +78,8 @@ class BirdTrackerState(app_callback_class):
         # Callback-only sticky aim point used to select the nearest target.
         self.aim_x = 0.5
         self.aim_y = 0.5
+        self.last_bird_bbox = None
+        self.last_bird_confidence = 0.0
 
         self._detached = False
         self._running = True
@@ -95,6 +98,9 @@ class BirdTrackerState(app_callback_class):
             round(clamp(tilt_degrees, config.TILT_MIN, config.TILT_MAX) + 90)
         )
         try:
+            waiting = self.ser.in_waiting
+            if waiting:
+                self.ser.read(waiting)
             self.ser.write(f"{pan_wire},{tilt_wire}\n".encode())
         except serial.SerialException as error:
             print(f"[WARN] Serial write failed: {error}")
