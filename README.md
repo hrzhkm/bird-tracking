@@ -75,8 +75,8 @@ seconds, the next target first reasserts the known absolute position and waits
 servos are detached from corrupting the first relative tracking movement.
 
 Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.02`
-filters detection noise, while `BIRD_DEADZONE_ENTER=0.01` and
-`BIRD_DEADZONE_EXIT=0.004` stop movement close to the image center.
+filters detection noise, while `BIRD_DEADZONE_ENTER=0.02` and
+`BIRD_DEADZONE_EXIT=0.01` stop movement close to the image center.
 `BIRD_TRACK_GAIN=130` and `BIRD_MAX_TARGET_SPEED=30` provide fast travel;
 inside `BIRD_PRECISION_ZONE=0.25`, `BIRD_PRECISION_GAIN=20` brakes for accurate
 centering. These values control tracking response

@@ -43,8 +43,8 @@ if PAN_SIGN not in (-1, 1) or TILT_SIGN not in (-1, 1):
 # Tracking controller. Speeds are degrees per second and image errors are
 # normalized to -0.5..+0.5.
 TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.02"))
-DEADZONE_ENTER = float(os.environ.get("BIRD_DEADZONE_ENTER", "0.01"))
-DEADZONE_EXIT = float(os.environ.get("BIRD_DEADZONE_EXIT", "0.004"))
+DEADZONE_ENTER = float(os.environ.get("BIRD_DEADZONE_ENTER", "0.02"))
+DEADZONE_EXIT = float(os.environ.get("BIRD_DEADZONE_EXIT", "0.01"))
 TRACK_GAIN = float(os.environ.get("BIRD_TRACK_GAIN", "130.0"))
 PRECISION_GAIN = float(os.environ.get("BIRD_PRECISION_GAIN", "20.0"))
 PRECISION_ZONE = float(os.environ.get("BIRD_PRECISION_ZONE", "0.25"))

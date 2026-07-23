@@ -167,7 +167,7 @@ class MotionHelperTests(unittest.TestCase):
         center_crossings = 0
         settled_errors = []
         position_history = deque([(0.0, position)])
-        error_filter = SmoothedAxis(0.02, 0.01, 0.004)
+        error_filter = SmoothedAxis(0.02, 0.02, 0.01)
 
         for tick in range(int(12 / control_dt)):
             now = tick * control_dt
@@ -255,7 +255,7 @@ class MotionHelperTests(unittest.TestCase):
                 position = next_position
 
         self.assertEqual(center_crossings, 0)
-        self.assertLess(settled_errors[-1], 0.004)
+        self.assertLess(settled_errors[-1], 0.01)
 
 
 if __name__ == "__main__":
