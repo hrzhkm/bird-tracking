@@ -10,16 +10,13 @@ from hailo_apps.hailo_app_python.core.gstreamer.gstreamer_app import (
 )
 
 from . import config
-
-
-def clamp(value, low, high):
-    return low if value < low else high if value > high else value
-
-
-def move_toward(current, target, step):
-    if current < target:
-        return min(current + step, target)
-    return max(current - step, target)
+from .motion import (
+    SmoothedAxis,
+    clamp,
+    format_servo_command,
+    move_toward_at_speed,
+    track_axis,
+)
 
 
 def find_servo_port():
@@ -75,7 +72,7 @@ class BirdTrackerState(app_callback_class):
         self.target_error_y = 0.0
         # Give the servos time to physically reach home before the idle
         # controller detaches them.
-        self.last_bird_time = time.time()
+        self.last_bird_time = time.monotonic()
         self.new_frame = False
 
         # Callback-only sticky aim point used to select the nearest target.
@@ -84,6 +81,18 @@ class BirdTrackerState(app_callback_class):
         self.last_bird_bbox = None
         self.last_bird_confidence = 0.0
         self.last_detection_debug_time = 0.0
+        self._pan_filter = SmoothedAxis(
+            config.TARGET_FILTER_TAU,
+            config.DEADZONE_ENTER,
+            config.DEADZONE_EXIT,
+        )
+        self._tilt_filter = SmoothedAxis(
+            config.TARGET_FILTER_TAU,
+            config.DEADZONE_ENTER,
+            config.DEADZONE_EXIT,
+        )
+        self._last_tracking_update = None
+        self._last_control_update = time.monotonic()
 
         self._detached = False
         self._running = True
@@ -108,17 +117,13 @@ class BirdTrackerState(app_callback_class):
         if self.ser is None:
             return
 
-        pan_wire = int(
-            round(clamp(pan_degrees, config.PAN_MIN, config.PAN_MAX) + 90)
-        )
-        tilt_wire = int(
-            round(clamp(tilt_degrees, config.TILT_MIN, config.TILT_MAX) + 90)
-        )
+        pan_wire = clamp(pan_degrees, config.PAN_MIN, config.PAN_MAX) + 90
+        tilt_wire = clamp(tilt_degrees, config.TILT_MIN, config.TILT_MAX) + 90
         try:
             waiting = self.ser.in_waiting
             if waiting:
                 self.ser.read(waiting)
-            self.ser.write(f"{pan_wire},{tilt_wire}\n".encode())
+            self.ser.write(format_servo_command(pan_wire, tilt_wire).encode())
         except serial.SerialException as error:
             print(f"[WARN] Serial write failed: {error}")
 
@@ -133,6 +138,13 @@ class BirdTrackerState(app_callback_class):
     def _control_loop(self):
         """Send all servo commands from one control thread."""
         while self._running:
+            now = time.monotonic()
+            control_dt = min(
+                max(now - self._last_control_update, 0.0),
+                config.MAX_CONTROL_DT,
+            )
+            self._last_control_update = now
+
             with self.lock:
                 bird = self.bird_present
                 error_x = self.target_error_x
@@ -142,45 +154,79 @@ class BirdTrackerState(app_callback_class):
                 self.new_frame = False
 
             if bird and fresh:
-                self._track_step(error_x, error_y)
+                if self._last_tracking_update is None:
+                    tracking_dt = min(
+                        1.0 / config.FRAME_RATE,
+                        config.MAX_CONTROL_DT,
+                    )
+                else:
+                    tracking_dt = min(
+                        max(now - self._last_tracking_update, 0.0),
+                        config.MAX_CONTROL_DT,
+                    )
+                self._last_tracking_update = now
+                self._track_step(error_x, error_y, tracking_dt)
                 self._send(self.pan_angle, self.tilt_angle)
                 self._detached = False
-            elif not bird and time.time() - last_seen > config.HOME_TIMEOUT:
-                moved = self._home_step()
-                if moved:
-                    self._send(self.pan_angle, self.tilt_angle)
-                elif not self._detached:
-                    self._detach()
-                    self._detached = True
+            elif not bird:
+                self._reset_tracking()
+                if now - last_seen > config.HOME_TIMEOUT:
+                    moved = self._home_step(control_dt)
+                    if moved:
+                        self._send(self.pan_angle, self.tilt_angle)
+                    elif not self._detached:
+                        self._detach()
+                        self._detached = True
 
             time.sleep(config.CONTROL_DT)
 
-    def _track_step(self, error_x, error_y):
-        if abs(error_x) > config.DEADZONE:
-            step = clamp(config.KP * error_x, -config.MAX_STEP, config.MAX_STEP)
-            self.pan_angle = clamp(
-                self.pan_angle + config.PAN_SIGN * step,
-                config.PAN_MIN,
-                config.PAN_MAX,
-            )
-        if abs(error_y) > config.DEADZONE:
-            step = clamp(config.KP * error_y, -config.MAX_STEP, config.MAX_STEP)
-            self.tilt_angle = clamp(
-                self.tilt_angle + config.TILT_SIGN * step,
-                config.TILT_MIN,
-                config.TILT_MAX,
-            )
+    def _track_step(self, error_x, error_y, dt):
+        filtered_x = self._pan_filter.update(error_x, dt)
+        filtered_y = self._tilt_filter.update(error_y, dt)
+        self.pan_angle = track_axis(
+            self.pan_angle,
+            filtered_x,
+            dt,
+            config.PAN_SIGN,
+            config.TRACK_GAIN,
+            config.MAX_TARGET_SPEED,
+            config.PAN_MIN,
+            config.PAN_MAX,
+        )
+        self.tilt_angle = track_axis(
+            self.tilt_angle,
+            filtered_y,
+            dt,
+            config.TILT_SIGN,
+            config.TRACK_GAIN,
+            config.MAX_TARGET_SPEED,
+            config.TILT_MIN,
+            config.TILT_MAX,
+        )
 
-    def _home_step(self):
+    def _reset_tracking(self):
+        if self._last_tracking_update is None:
+            return
+        self._pan_filter.reset()
+        self._tilt_filter.reset()
+        self._last_tracking_update = None
+
+    def _home_step(self, dt):
         moved = False
         if abs(self.pan_angle - config.HOME_PAN) > 0.01:
-            self.pan_angle = move_toward(
-                self.pan_angle, config.HOME_PAN, config.MAX_STEP
+            self.pan_angle = move_toward_at_speed(
+                self.pan_angle,
+                config.HOME_PAN,
+                config.HOME_SPEED,
+                dt,
             )
             moved = True
         if abs(self.tilt_angle - config.HOME_TILT) > 0.01:
-            self.tilt_angle = move_toward(
-                self.tilt_angle, config.HOME_TILT, config.MAX_STEP
+            self.tilt_angle = move_toward_at_speed(
+                self.tilt_angle,
+                config.HOME_TILT,
+                config.HOME_SPEED,
+                dt,
             )
             moved = True
         return moved

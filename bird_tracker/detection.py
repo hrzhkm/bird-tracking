@@ -32,13 +32,16 @@ def app_callback(pad, info, user_data):
     roi = hailo.get_roi_from_buffer(buffer)
     detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
 
-    if config.DETECTION_DEBUG and time.time() - user_data.last_detection_debug_time >= 1.0:
+    if (
+        config.DETECTION_DEBUG
+        and time.monotonic() - user_data.last_detection_debug_time >= 1.0
+    ):
         summary = ", ".join(
             f"{detection.get_label()!r}:{detection.get_confidence():.2f}"
             for detection in detections[:10]
         )
         print(f"[DETECTIONS] {summary or 'none'}", flush=True)
-        user_data.last_detection_debug_time = time.time()
+        user_data.last_detection_debug_time = time.monotonic()
 
     birds = []
     for detection in detections:
@@ -74,12 +77,12 @@ def app_callback(pad, info, user_data):
             user_data.target_error_x = center_x - 0.5
             user_data.target_error_y = center_y - 0.5
             user_data.bird_present = True
-            user_data.last_bird_time = time.time()
+            user_data.last_bird_time = time.monotonic()
             user_data.new_frame = True
         if not was_present:
             print(f"[BIRD] Target acquired ({confidence:.2f})")
     else:
-        now = time.time()
+        now = time.monotonic()
         with user_data.lock:
             was_present = user_data.bird_present
             last_seen = user_data.last_bird_time
