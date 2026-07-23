@@ -14,8 +14,8 @@ from .motion import (
     SmoothedAxis,
     clamp,
     format_servo_command,
-    move_toward_at_speed,
-    track_axis,
+    format_tracking_command,
+    tracking_delta,
 )
 
 
@@ -92,9 +92,8 @@ class BirdTrackerState(app_callback_class):
             config.DEADZONE_EXIT,
         )
         self._last_tracking_update = None
-        self._last_control_update = time.monotonic()
+        self._home_commanded = False
 
-        self._detached = False
         self._running = True
         self._thread = threading.Thread(target=self._control_loop, daemon=True)
         self._thread.start()
@@ -135,15 +134,23 @@ class BirdTrackerState(app_callback_class):
         except serial.SerialException:
             pass
 
+    def _send_tracking(self, pan_delta, tilt_delta):
+        if self.ser is None:
+            return
+
+        try:
+            waiting = self.ser.in_waiting
+            if waiting:
+                self.ser.read(waiting)
+            command = format_tracking_command(pan_delta, tilt_delta)
+            self.ser.write(command.encode())
+        except serial.SerialException as error:
+            print(f"[WARN] Serial write failed: {error}")
+
     def _control_loop(self):
         """Send all servo commands from one control thread."""
         while self._running:
             now = time.monotonic()
-            control_dt = min(
-                max(now - self._last_control_update, 0.0),
-                config.MAX_CONTROL_DT,
-            )
-            self._last_control_update = now
 
             with self.lock:
                 bird = self.bird_present
@@ -165,44 +172,54 @@ class BirdTrackerState(app_callback_class):
                         config.MAX_CONTROL_DT,
                     )
                 self._last_tracking_update = now
-                self._track_step(error_x, error_y, tracking_dt)
-                self._send(self.pan_angle, self.tilt_angle)
-                self._detached = False
+                pan_delta, tilt_delta = self._track_step(
+                    error_x,
+                    error_y,
+                    tracking_dt,
+                )
+                self._send_tracking(pan_delta, tilt_delta)
+                self._home_commanded = False
             elif not bird:
                 self._reset_tracking()
-                if now - last_seen > config.HOME_TIMEOUT:
-                    moved = self._home_step(control_dt)
-                    if moved:
-                        self._send(self.pan_angle, self.tilt_angle)
-                    elif not self._detached:
-                        self._detach()
-                        self._detached = True
+                if (
+                    now - last_seen > config.HOME_TIMEOUT
+                    and not self._home_commanded
+                ):
+                    self.pan_angle = config.HOME_PAN
+                    self.tilt_angle = config.HOME_TILT
+                    self._send(self.pan_angle, self.tilt_angle)
+                    self._home_commanded = True
 
             time.sleep(config.CONTROL_DT)
 
     def _track_step(self, error_x, error_y, dt):
         filtered_x = self._pan_filter.update(error_x, dt)
         filtered_y = self._tilt_filter.update(error_y, dt)
-        self.pan_angle = track_axis(
-            self.pan_angle,
+        pan_delta = tracking_delta(
             filtered_x,
             dt,
             config.PAN_SIGN,
             config.TRACK_GAIN,
             config.MAX_TARGET_SPEED,
-            config.PAN_MIN,
-            config.PAN_MAX,
         )
-        self.tilt_angle = track_axis(
-            self.tilt_angle,
+        tilt_delta = tracking_delta(
             filtered_y,
             dt,
             config.TILT_SIGN,
             config.TRACK_GAIN,
             config.MAX_TARGET_SPEED,
+        )
+        self.pan_angle = clamp(
+            self.pan_angle + pan_delta,
+            config.PAN_MIN,
+            config.PAN_MAX,
+        )
+        self.tilt_angle = clamp(
+            self.tilt_angle + tilt_delta,
             config.TILT_MIN,
             config.TILT_MAX,
         )
+        return pan_delta, tilt_delta
 
     def _reset_tracking(self):
         if self._last_tracking_update is None:
@@ -210,26 +227,6 @@ class BirdTrackerState(app_callback_class):
         self._pan_filter.reset()
         self._tilt_filter.reset()
         self._last_tracking_update = None
-
-    def _home_step(self, dt):
-        moved = False
-        if abs(self.pan_angle - config.HOME_PAN) > 0.01:
-            self.pan_angle = move_toward_at_speed(
-                self.pan_angle,
-                config.HOME_PAN,
-                config.HOME_SPEED,
-                dt,
-            )
-            moved = True
-        if abs(self.tilt_angle - config.HOME_TILT) > 0.01:
-            self.tilt_angle = move_toward_at_speed(
-                self.tilt_angle,
-                config.HOME_TILT,
-                config.HOME_SPEED,
-                dt,
-            )
-            moved = True
-        return moved
 
     def shutdown(self):
         """Stop the worker, release the servos, and close the serial port."""

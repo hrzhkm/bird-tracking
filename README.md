@@ -61,16 +61,18 @@ the actual default input and frame rate without launcher overrides.
 servo coordinates. The configured defaults are tilt `80` and pan `70`. Values
 must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
 `BIRD_PAN_SIGN` and `BIRD_TILT_SIGN` control the tracking direction for each
-axis and must be `1` or `-1`. The default tilt sign is `-1` because image Y
-increases downward while this bracket points down as its tilt angle decreases.
+axis and must be `1` or `-1`. Image Y and the tilt servo angle both increase
+downward on this bracket, so the default tilt sign is `1`.
 
-Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.15`
+Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.08`
 filters detection noise, while `BIRD_DEADZONE_ENTER=0.06` and
 `BIRD_DEADZONE_EXIT=0.035` prevent repeated movement around the image center.
-`BIRD_TRACK_GAIN=140`, `BIRD_MAX_TARGET_SPEED=30`, and `BIRD_HOME_SPEED=20`
-control tracking response and speed in servo degrees per second. The defaults
-provide balanced movement; increase the filter time or reduce the speed for a
-smoother but slower response.
+`BIRD_TRACK_GAIN=90` and `BIRD_MAX_TARGET_SPEED=20` control tracking response
+and speed in servo degrees per second. The defaults provide balanced movement;
+increase the filter time or reduce the speed for a smoother but slower response.
+Live tracking uses relative `R,pan_delta,tilt_delta` commands so the ESP32 never
+queues a distant target beyond the bird. Absolute `pan,tilt` commands remain in
+use for startup and homing.
 
 You can also select the servo controller there, preferably using its stable USB
 ID:

@@ -18,15 +18,26 @@ def move_toward_at_speed(current, target, speed, dt):
     return move_toward(current, target, speed * max(dt, 0.0))
 
 
+def tracking_delta(error, dt, sign, gain, maximum_speed):
+    """Convert image error into a bounded relative servo movement."""
+    velocity = clamp(gain * error, -maximum_speed, maximum_speed)
+    return sign * velocity * max(dt, 0.0)
+
+
 def track_axis(current, error, dt, sign, gain, maximum_speed, low, high):
     """Integrate a normalized image error into a bounded angular target."""
-    velocity = clamp(gain * error, -maximum_speed, maximum_speed)
-    return clamp(current + sign * velocity * max(dt, 0.0), low, high)
+    delta = tracking_delta(error, dt, sign, gain, maximum_speed)
+    return clamp(current + delta, low, high)
 
 
 def format_servo_command(pan_degrees, tilt_degrees):
     """Serialize sub-degree targets while remaining human-readable."""
     return f"{pan_degrees:.2f},{tilt_degrees:.2f}\n"
+
+
+def format_tracking_command(pan_delta, tilt_delta):
+    """Serialize a relative tracking movement."""
+    return f"R,{pan_delta:.2f},{tilt_delta:.2f}\n"
 
 
 class SmoothedAxis:

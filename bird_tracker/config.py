@@ -16,22 +16,21 @@ SERIAL_PORT = os.environ.get("BIRD_SERVO_PORT")
 SERIAL_BAUD = 115200
 
 # Image X increases to the right and image Y increases downward. On the current
-# pan/tilt bracket, increasing the pan angle turns right while decreasing the
+# pan/tilt bracket, increasing the pan angle turns right and increasing the
 # tilt angle points down.
 PAN_SIGN = int(os.environ.get("BIRD_PAN_SIGN", "1"))
-TILT_SIGN = int(os.environ.get("BIRD_TILT_SIGN", "-1"))
+TILT_SIGN = int(os.environ.get("BIRD_TILT_SIGN", "1"))
 
 if PAN_SIGN not in (-1, 1) or TILT_SIGN not in (-1, 1):
     raise ValueError("BIRD_PAN_SIGN and BIRD_TILT_SIGN must be either -1 or 1")
 
 # Tracking controller. Speeds are degrees per second and image errors are
 # normalized to -0.5..+0.5.
-TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.15"))
+TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.08"))
 DEADZONE_ENTER = float(os.environ.get("BIRD_DEADZONE_ENTER", "0.06"))
 DEADZONE_EXIT = float(os.environ.get("BIRD_DEADZONE_EXIT", "0.035"))
-TRACK_GAIN = float(os.environ.get("BIRD_TRACK_GAIN", "140.0"))
-MAX_TARGET_SPEED = float(os.environ.get("BIRD_MAX_TARGET_SPEED", "30.0"))
-HOME_SPEED = float(os.environ.get("BIRD_HOME_SPEED", "20.0"))
+TRACK_GAIN = float(os.environ.get("BIRD_TRACK_GAIN", "90.0"))
+MAX_TARGET_SPEED = float(os.environ.get("BIRD_MAX_TARGET_SPEED", "20.0"))
 MAX_CONTROL_DT = 0.10
 CONTROL_DT = 0.02
 HOME_TIMEOUT = 5.0
@@ -45,10 +44,9 @@ if not 0 <= DEADZONE_EXIT < DEADZONE_ENTER <= 0.5:
         "dead zones must satisfy 0 <= BIRD_DEADZONE_EXIT "
         "< BIRD_DEADZONE_ENTER <= 0.5"
     )
-if min(TRACK_GAIN, MAX_TARGET_SPEED, HOME_SPEED) <= 0:
+if min(TRACK_GAIN, MAX_TARGET_SPEED) <= 0:
     raise ValueError(
-        "BIRD_TRACK_GAIN, BIRD_MAX_TARGET_SPEED, and BIRD_HOME_SPEED "
-        "must be greater than zero"
+        "BIRD_TRACK_GAIN and BIRD_MAX_TARGET_SPEED must be greater than zero"
     )
 
 # Physical limits enforced by the ESP32, expressed in normal servo coordinates.

@@ -3,8 +3,10 @@ import unittest
 from bird_tracker.motion import (
     SmoothedAxis,
     format_servo_command,
+    format_tracking_command,
     move_toward_at_speed,
     track_axis,
+    tracking_delta,
 )
 
 
@@ -56,12 +58,46 @@ class MotionHelperTests(unittest.TestCase):
             -3.0,
         )
 
+    def test_positive_vertical_error_commands_downward_tilt(self):
+        # Image Y increases downward, and increasing the installed tilt
+        # servo angle points the camera downward.
+        tilt = track_axis(
+            current=0.0,
+            error=0.25,
+            dt=0.1,
+            sign=1,
+            gain=140.0,
+            maximum_speed=30.0,
+            low=-70.0,
+            high=30.0,
+        )
+
+        self.assertGreater(tilt, 0.0)
+
     def test_homing_uses_elapsed_time_and_does_not_overshoot(self):
         self.assertAlmostEqual(move_toward_at_speed(10, 0, 20, 0.1), 8)
         self.assertEqual(move_toward_at_speed(1, 0, 20, 0.1), 0)
 
     def test_decimal_command_format(self):
         self.assertEqual(format_servo_command(70, 80.125), "70.00,80.12\n")
+
+    def test_tracking_command_uses_relative_deltas(self):
+        self.assertEqual(
+            format_tracking_command(0.625, -0.375),
+            "R,0.62,-0.38\n",
+        )
+
+    def test_zero_error_cancels_queued_tracking_movement(self):
+        self.assertEqual(
+            tracking_delta(
+                error=0.0,
+                dt=0.1,
+                sign=1,
+                gain=90.0,
+                maximum_speed=20.0,
+            ),
+            0.0,
+        )
 
 
 if __name__ == "__main__":
