@@ -1,3 +1,4 @@
+import math
 import unittest
 
 from bird_tracker.motion import (
@@ -98,6 +99,107 @@ class MotionHelperTests(unittest.TestCase):
             ),
             0.0,
         )
+
+    def test_fast_profile_is_limited_to_two_degrees_per_frame(self):
+        delta = tracking_delta(
+            error=0.5,
+            dt=1 / 15,
+            sign=1,
+            gain=130.0,
+            maximum_speed=30.0,
+        )
+
+        self.assertAlmostEqual(delta, 2.0)
+
+    def test_fast_profile_settles_without_crossing_center(self):
+        acceleration = 180.0
+        maximum_velocity = 60.0
+        control_dt = 0.02
+        frame_dt = 1 / 15
+        field_of_view = 60.0
+        bird_angle = 18.0
+        position = 0.0
+        target = 0.0
+        velocity = 0.0
+        next_frame = 0.0
+        previous_error = None
+        center_crossings = 0
+        settled_errors = []
+        error_filter = SmoothedAxis(0.05, 0.06, 0.035)
+
+        for tick in range(int(8 / control_dt)):
+            now = tick * control_dt
+            if now + 1e-9 >= next_frame:
+                error = (bird_angle - position) / field_of_view
+                filtered = error_filter.update(error, frame_dt)
+                delta = tracking_delta(
+                    filtered,
+                    frame_dt,
+                    sign=1,
+                    gain=130.0,
+                    maximum_speed=30.0,
+                )
+                if delta == 0.0 or delta * velocity < 0.0:
+                    velocity = 0.0
+                target = position + max(-3.0, min(3.0, delta))
+                next_frame += frame_dt
+
+                if previous_error is not None and error * previous_error < 0:
+                    center_crossings += 1
+                previous_error = error
+                if now >= 4.0:
+                    settled_errors.append(abs(error))
+
+            distance = target - position
+            acceleration_step = acceleration * control_dt
+            if (
+                abs(distance) <= 0.01
+                and abs(velocity) <= acceleration_step
+            ):
+                position = target
+                velocity = 0.0
+                continue
+
+            stopping_speed = (
+                math.sqrt(
+                    acceleration_step**2
+                    + 2.0 * acceleration * abs(distance)
+                )
+                - acceleration_step
+            )
+            desired_velocity = math.copysign(
+                min(maximum_velocity, stopping_speed),
+                distance,
+            )
+            if velocity < desired_velocity:
+                velocity = min(
+                    velocity + acceleration_step,
+                    desired_velocity,
+                )
+            else:
+                velocity = max(
+                    velocity - acceleration_step,
+                    desired_velocity,
+                )
+
+            next_position = position + velocity * control_dt
+            crossed_target = (
+                distance >= 0.0
+                and velocity > 0.0
+                and next_position >= target
+            ) or (
+                distance <= 0.0
+                and velocity < 0.0
+                and next_position <= target
+            )
+            if crossed_target:
+                position = target
+                velocity = 0.0
+            else:
+                position = next_position
+
+        self.assertEqual(center_crossings, 0)
+        self.assertLess(max(settled_errors), 0.035)
 
 
 if __name__ == "__main__":

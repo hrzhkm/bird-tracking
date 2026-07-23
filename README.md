@@ -35,7 +35,8 @@ You can replace `usb` with a specific device such as `/dev/video0`. A command-li
 `--input` argument overrides the `.env` value for one run.
 
 `BIRD_VIDEO_SINK=ximagesink` provides a stable X11/VNC display path.
-`BIRD_FRAME_RATE=15` limits inference and DMA pressure on the Raspberry Pi.
+`BIRD_FRAME_RATE=15` avoids the sustained QoS drops observed at 20 FPS on the
+current Raspberry Pi pipeline; motion speed is tuned independently below.
 Inference and aggregation queues remain synchronized so detection metadata is
 attached to the correct video frame; do not make those queues independently
 leaky.
@@ -64,10 +65,10 @@ must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
 axis and must be `1` or `-1`. Image Y and the tilt servo angle both increase
 downward on this bracket, so the default tilt sign is `1`.
 
-Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.08`
+Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.05`
 filters detection noise, while `BIRD_DEADZONE_ENTER=0.06` and
 `BIRD_DEADZONE_EXIT=0.035` prevent repeated movement around the image center.
-`BIRD_TRACK_GAIN=90` and `BIRD_MAX_TARGET_SPEED=20` control tracking response
+`BIRD_TRACK_GAIN=130` and `BIRD_MAX_TARGET_SPEED=30` control tracking response
 and speed in servo degrees per second. The defaults provide balanced movement;
 increase the filter time or reduce the speed for a smoother but slower response.
 Live tracking uses relative `R,pan_delta,tilt_delta` commands so the ESP32 never

@@ -6,7 +6,7 @@ import os
 # Video input. "usb" asks the Hailo pipeline to discover a USB camera.
 VIDEO_SOURCE = os.environ.get("BIRD_VIDEO_SOURCE", "usb")
 VIDEO_SINK = os.environ.get("BIRD_VIDEO_SINK", "ximagesink")
-FRAME_RATE = int(os.environ.get("BIRD_FRAME_RATE", "20"))
+FRAME_RATE = int(os.environ.get("BIRD_FRAME_RATE", "15"))
 
 if FRAME_RATE <= 0:
     raise ValueError("BIRD_FRAME_RATE must be greater than zero")
@@ -26,11 +26,11 @@ if PAN_SIGN not in (-1, 1) or TILT_SIGN not in (-1, 1):
 
 # Tracking controller. Speeds are degrees per second and image errors are
 # normalized to -0.5..+0.5.
-TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.08"))
+TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.05"))
 DEADZONE_ENTER = float(os.environ.get("BIRD_DEADZONE_ENTER", "0.06"))
 DEADZONE_EXIT = float(os.environ.get("BIRD_DEADZONE_EXIT", "0.035"))
-TRACK_GAIN = float(os.environ.get("BIRD_TRACK_GAIN", "90.0"))
-MAX_TARGET_SPEED = float(os.environ.get("BIRD_MAX_TARGET_SPEED", "20.0"))
+TRACK_GAIN = float(os.environ.get("BIRD_TRACK_GAIN", "130.0"))
+MAX_TARGET_SPEED = float(os.environ.get("BIRD_MAX_TARGET_SPEED", "30.0"))
 MAX_CONTROL_DT = 0.10
 CONTROL_DT = 0.02
 HOME_TIMEOUT = 5.0
