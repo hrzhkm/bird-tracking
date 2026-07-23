@@ -60,6 +60,9 @@ the actual default input and frame rate without launcher overrides.
 `BIRD_HOME_TILT` and `BIRD_HOME_PAN` set the home position in normal `0..180`
 servo coordinates. The configured defaults are tilt `80` and pan `70`. Values
 must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
+`BIRD_PAN_SIGN` and `BIRD_TILT_SIGN` control the tracking direction for each
+axis and must be `1` or `-1`. The default tilt sign is `-1` because image Y
+increases downward while this bracket points down as its tilt angle decreases.
 
 You can also select the servo controller there, preferably using its stable USB
 ID:

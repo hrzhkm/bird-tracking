@@ -15,9 +15,14 @@ if FRAME_RATE <= 0:
 SERIAL_PORT = os.environ.get("BIRD_SERVO_PORT")
 SERIAL_BAUD = 115200
 
-# Flip either sign if that servo moves in the wrong direction.
-PAN_SIGN = 1
-TILT_SIGN = 1
+# Image X increases to the right and image Y increases downward. On the current
+# pan/tilt bracket, increasing the pan angle turns right while decreasing the
+# tilt angle points down.
+PAN_SIGN = int(os.environ.get("BIRD_PAN_SIGN", "1"))
+TILT_SIGN = int(os.environ.get("BIRD_TILT_SIGN", "-1"))
+
+if PAN_SIGN not in (-1, 1) or TILT_SIGN not in (-1, 1):
+    raise ValueError("BIRD_PAN_SIGN and BIRD_TILT_SIGN must be either -1 or 1")
 
 # Tracking controller
 KP = 7.0
