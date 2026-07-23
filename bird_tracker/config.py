@@ -77,19 +77,58 @@ CONF_THRESH = float(os.environ.get("BIRD_CONFIDENCE", "0.20"))
 DETECTION_HOLD = float(os.environ.get("BIRD_DETECTION_HOLD", "1.0"))
 DETECTION_DEBUG = os.environ.get("BIRD_DETECTION_DEBUG", "0") == "1"
 
+# Lost-target recovery. Screen velocities use normalized frame units/second.
+PREDICTION_VELOCITY_TAU = float(
+    os.environ.get("BIRD_PREDICTION_VELOCITY_TAU", "0.15")
+)
+PREDICTION_COAST = float(os.environ.get("BIRD_PREDICTION_COAST", "0.60"))
+PREDICTION_SEARCH = float(os.environ.get("BIRD_PREDICTION_SEARCH", "1.20"))
+PREDICTION_MIN_SPEED = float(
+    os.environ.get("BIRD_PREDICTION_MIN_SPEED", "0.12")
+)
+PREDICTION_MAX_SPEED = float(
+    os.environ.get("BIRD_PREDICTION_MAX_SPEED", "2.0")
+)
+PREDICTION_EDGE_ZONE = float(
+    os.environ.get("BIRD_PREDICTION_EDGE_ZONE", "0.20")
+)
+PREDICTION_SEARCH_ERROR = float(
+    os.environ.get("BIRD_PREDICTION_SEARCH_ERROR", "0.30")
+)
+PREDICTION_MARGIN = float(os.environ.get("BIRD_PREDICTION_MARGIN", "0.20"))
+
 # Hailo metadata tracker. This bridges short YOLO misses and keeps the target
 # identity stable while the camera is moving. Inference itself still runs on
 # the Hailo-8; the tracker operates on the resulting detection metadata.
 TRACKER_KEEP_NEW_FRAMES = int(os.environ.get("BIRD_TRACKER_KEEP_NEW_FRAMES", "3"))
 TRACKER_KEEP_TRACKED_FRAMES = int(
-    os.environ.get("BIRD_TRACKER_KEEP_TRACKED_FRAMES", "40")
+    os.environ.get("BIRD_TRACKER_KEEP_TRACKED_FRAMES", "10")
 )
 TRACKER_KEEP_LOST_FRAMES = int(
-    os.environ.get("BIRD_TRACKER_KEEP_LOST_FRAMES", "10")
+    os.environ.get("BIRD_TRACKER_KEEP_LOST_FRAMES", "4")
 )
 
 if DETECTION_HOLD < 0:
     raise ValueError("BIRD_DETECTION_HOLD cannot be negative")
+
+if min(
+    PREDICTION_VELOCITY_TAU,
+    PREDICTION_COAST,
+    PREDICTION_SEARCH,
+    PREDICTION_MIN_SPEED,
+    PREDICTION_MAX_SPEED,
+) < 0:
+    raise ValueError("bird prediction timing and speed values cannot be negative")
+if not 0 < PREDICTION_EDGE_ZONE < 0.5:
+    raise ValueError("BIRD_PREDICTION_EDGE_ZONE must be between 0 and 0.5")
+if not 0 < PREDICTION_SEARCH_ERROR <= 0.5:
+    raise ValueError("BIRD_PREDICTION_SEARCH_ERROR must be in (0, 0.5]")
+if not 0 <= PREDICTION_MARGIN <= 0.5:
+    raise ValueError("BIRD_PREDICTION_MARGIN must be between 0 and 0.5")
+if PREDICTION_MAX_SPEED < PREDICTION_MIN_SPEED:
+    raise ValueError(
+        "BIRD_PREDICTION_MAX_SPEED must be at least BIRD_PREDICTION_MIN_SPEED"
+    )
 
 if min(
     TRACKER_KEEP_NEW_FRAMES,

@@ -17,6 +17,7 @@ from .motion import (
     format_tracking_command,
     tracking_delta,
 )
+from .prediction import LostTargetRecovery
 
 
 def find_servo_port():
@@ -74,6 +75,7 @@ class BirdTrackerState(app_callback_class):
         # controller detaches them.
         self.last_bird_time = time.monotonic()
         self.new_frame = False
+        self.stop_tracking = False
 
         # Callback-only sticky aim point used to select the nearest target.
         self.aim_x = 0.5
@@ -81,6 +83,18 @@ class BirdTrackerState(app_callback_class):
         self.last_bird_bbox = None
         self.last_bird_confidence = 0.0
         self.last_detection_debug_time = 0.0
+        self.active_track_id = None
+        self.recovery_mode = None
+        self.target_predictor = LostTargetRecovery(
+            config.PREDICTION_VELOCITY_TAU,
+            config.PREDICTION_COAST,
+            config.PREDICTION_SEARCH,
+            config.PREDICTION_MIN_SPEED,
+            config.PREDICTION_MAX_SPEED,
+            config.PREDICTION_EDGE_ZONE,
+            config.PREDICTION_SEARCH_ERROR,
+            config.PREDICTION_MARGIN,
+        )
         self._pan_filter = SmoothedAxis(
             config.TARGET_FILTER_TAU,
             config.DEADZONE_ENTER,
@@ -158,7 +172,13 @@ class BirdTrackerState(app_callback_class):
                 error_y = self.target_error_y
                 last_seen = self.last_bird_time
                 fresh = self.new_frame
+                stop = self.stop_tracking
                 self.new_frame = False
+                self.stop_tracking = False
+
+            if stop:
+                self._send_tracking(0.0, 0.0)
+                self._reset_tracking()
 
             if bird and fresh:
                 if self._last_tracking_update is None:

@@ -48,10 +48,13 @@ tracker produces false bird detections.
 `BIRD_DETECTION_HOLD=1.0` keeps the most recent valid bird box visible across
 brief inference misses without moving the servos from stale coordinates.
 
-After the raw detections reach the control callback, the display pipeline uses
-Hailo's metadata tracker for COCO bird class 15. Its default 40-frame tracked
-window bridges about 2.7 seconds of detector misses at 15 FPS; tune
-`BIRD_TRACKER_KEEP_TRACKED_FRAMES` in `.env` if necessary.
+Hailo's metadata tracker now runs before the control callback, so its Kalman
+prediction bridges short detector misses instead of affecting only the display.
+The default 10-frame tracked window is followed by bounded lost-target
+recovery: recent screen velocity is extrapolated for 0.6 seconds, then the
+camera searches toward a likely exit edge for at most 1.2 seconds. A weak or
+non-edge-directed motion estimate stops instead of initiating a blind search.
+Tune the `BIRD_PREDICTION_*` values in `.env` if necessary.
 
 At startup, `run.sh` verifies that a Hailo device is present and that its
 architecture matches `hailo_arch`. It exits instead of silently attempting a

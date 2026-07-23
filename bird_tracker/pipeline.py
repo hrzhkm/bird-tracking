@@ -62,8 +62,8 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
         pipeline = (
             f"{source_pipeline} ! "
             f"{inference_wrapper} ! "
-            f"{callback_pipeline} ! "
             f"{tracker_pipeline} ! "
+            f"{callback_pipeline} ! "
             f"{display_pipeline}"
         )
         print(
