@@ -6,7 +6,11 @@ import os
 # Video input. "usb" asks the Hailo pipeline to discover a USB camera.
 VIDEO_SOURCE = os.environ.get("BIRD_VIDEO_SOURCE", "usb")
 VIDEO_SINK = os.environ.get("BIRD_VIDEO_SINK", "ximagesink")
-FRAME_RATE = int(os.environ.get("BIRD_FRAME_RATE", "15"))
+FRAME_RATE = int(os.environ.get("BIRD_FRAME_RATE", "30"))
+HEF_PATH = os.environ.get(
+    "BIRD_HEF_PATH",
+    "/usr/local/hailo/resources/models/hailo8/yolov6n.hef",
+)
 
 if FRAME_RATE <= 0:
     raise ValueError("BIRD_FRAME_RATE must be greater than zero")

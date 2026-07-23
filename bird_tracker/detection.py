@@ -48,17 +48,20 @@ def app_callback(pad, info, user_data):
         label = detection.get_label()
         confidence = detection.get_confidence()
 
-        if label == "bird" and confidence > config.CONF_THRESH:
-            bbox = detection.get_bbox()
-            center_x = bbox.xmin() + bbox.width() / 2.0
-            center_y = bbox.ymin() + bbox.height() / 2.0
-            track_objects = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
-            track_id = (
-                track_objects[0].get_id()
-                if len(track_objects) == 1
-                else None
-            )
-            birds.append((center_x, center_y, bbox, confidence, track_id))
+        if label != "bird" or confidence <= config.CONF_THRESH:
+            roi.remove_object(detection)
+            continue
+
+        bbox = detection.get_bbox()
+        center_x = bbox.xmin() + bbox.width() / 2.0
+        center_y = bbox.ymin() + bbox.height() / 2.0
+        track_objects = detection.get_objects_typed(hailo.HAILO_UNIQUE_ID)
+        track_id = (
+            track_objects[0].get_id()
+            if len(track_objects) == 1
+            else None
+        )
+        birds.append((center_x, center_y, bbox, confidence, track_id))
 
     tracked = None
     recovery_target = None

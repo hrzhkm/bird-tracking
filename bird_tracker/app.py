@@ -14,7 +14,11 @@ from .pipeline import LowLatencyDetectionApp
 
 def main():
     parser = get_default_parser()
-    parser.set_defaults(input=config.VIDEO_SOURCE, frame_rate=config.FRAME_RATE)
+    parser.set_defaults(
+        input=config.VIDEO_SOURCE,
+        frame_rate=config.FRAME_RATE,
+        hef_path=config.HEF_PATH,
+    )
 
     user_data = BirdTrackerState()
     app = LowLatencyDetectionApp(app_callback, user_data, parser=parser)
