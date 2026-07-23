@@ -15,6 +15,7 @@ from .motion import (
     clamp,
     format_servo_command,
     format_tracking_command,
+    servo_command_is_stale,
     tracking_delta,
 )
 from .prediction import LostTargetRecovery
@@ -44,6 +45,8 @@ class BirdTrackerState(app_callback_class):
         # until its boot window has elapsed.
         self.pan_angle = config.HOME_PAN
         self.tilt_angle = config.HOME_TILT
+        self._last_command_time = None
+        self._resync_until = None
 
         self.serial_port = find_servo_port()
         try:
@@ -137,6 +140,7 @@ class BirdTrackerState(app_callback_class):
             if waiting:
                 self.ser.read(waiting)
             self.ser.write(format_servo_command(pan_wire, tilt_wire).encode())
+            self._last_command_time = time.monotonic()
         except serial.SerialException as error:
             print(f"[WARN] Serial write failed: {error}")
 
@@ -145,6 +149,7 @@ class BirdTrackerState(app_callback_class):
             return
         try:
             self.ser.write(b"D\n")
+            self._last_command_time = None
         except serial.SerialException:
             pass
 
@@ -158,6 +163,7 @@ class BirdTrackerState(app_callback_class):
                 self.ser.read(waiting)
             command = format_tracking_command(pan_delta, tilt_delta)
             self.ser.write(command.encode())
+            self._last_command_time = time.monotonic()
         except serial.SerialException as error:
             print(f"[WARN] Serial write failed: {error}")
 
@@ -181,24 +187,25 @@ class BirdTrackerState(app_callback_class):
                 self._reset_tracking()
 
             if bird and fresh:
-                if self._last_tracking_update is None:
-                    tracking_dt = min(
-                        1.0 / config.FRAME_RATE,
-                        config.MAX_CONTROL_DT,
+                if not self._wait_for_servo_sync(now):
+                    if self._last_tracking_update is None:
+                        tracking_dt = min(
+                            1.0 / config.FRAME_RATE,
+                            config.MAX_CONTROL_DT,
+                        )
+                    else:
+                        tracking_dt = min(
+                            max(now - self._last_tracking_update, 0.0),
+                            config.MAX_CONTROL_DT,
+                        )
+                    self._last_tracking_update = now
+                    pan_delta, tilt_delta = self._track_step(
+                        error_x,
+                        error_y,
+                        tracking_dt,
                     )
-                else:
-                    tracking_dt = min(
-                        max(now - self._last_tracking_update, 0.0),
-                        config.MAX_CONTROL_DT,
-                    )
-                self._last_tracking_update = now
-                pan_delta, tilt_delta = self._track_step(
-                    error_x,
-                    error_y,
-                    tracking_dt,
-                )
-                self._send_tracking(pan_delta, tilt_delta)
-                self._home_commanded = False
+                    self._send_tracking(pan_delta, tilt_delta)
+                    self._home_commanded = False
             elif not bird:
                 self._reset_tracking()
                 if (
@@ -212,6 +219,28 @@ class BirdTrackerState(app_callback_class):
 
             time.sleep(config.CONTROL_DT)
 
+    def _wait_for_servo_sync(self, now):
+        if self._resync_until is not None:
+            if now < self._resync_until:
+                return True
+            self._resync_until = None
+            self._reset_tracking()
+            print("[SERVO] Position synchronized; tracking")
+            return False
+
+        if not servo_command_is_stale(
+            now,
+            self._last_command_time,
+            config.SERVO_RESYNC_IDLE,
+        ):
+            return False
+
+        self._send(self.pan_angle, self.tilt_angle)
+        self._resync_until = now + config.SERVO_RESYNC_SETTLE
+        self._reset_tracking()
+        print("[SERVO] Re-synchronizing position before tracking")
+        return config.SERVO_RESYNC_SETTLE > 0
+
     def _track_step(self, error_x, error_y, dt):
         filtered_x = self._pan_filter.update(error_x, dt)
         filtered_y = self._tilt_filter.update(error_y, dt)
@@ -221,6 +250,8 @@ class BirdTrackerState(app_callback_class):
             config.PAN_SIGN,
             config.TRACK_GAIN,
             config.MAX_TARGET_SPEED,
+            config.PRECISION_GAIN,
+            config.PRECISION_ZONE,
         )
         tilt_delta = tracking_delta(
             filtered_y,
@@ -228,6 +259,8 @@ class BirdTrackerState(app_callback_class):
             config.TILT_SIGN,
             config.TRACK_GAIN,
             config.MAX_TARGET_SPEED,
+            config.PRECISION_GAIN,
+            config.PRECISION_ZONE,
         )
         self.pan_angle = clamp(
             self.pan_angle + pan_delta,

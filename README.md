@@ -67,11 +67,17 @@ must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
 `BIRD_PAN_SIGN` and `BIRD_TILT_SIGN` control the tracking direction for each
 axis and must be `1` or `-1`. Image Y and the tilt servo angle both increase
 downward on this bracket, so the default tilt sign is `1`.
+If the ESP32 command stream has been idle for `BIRD_SERVO_RESYNC_IDLE=2.5`
+seconds, the next target first reasserts the known absolute position and waits
+`BIRD_SERVO_RESYNC_SETTLE=0.5` seconds. This prevents physical drift while the
+servos are detached from corrupting the first relative tracking movement.
 
-Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.05`
-filters detection noise, while `BIRD_DEADZONE_ENTER=0.06` and
-`BIRD_DEADZONE_EXIT=0.035` prevent repeated movement around the image center.
-`BIRD_TRACK_GAIN=130` and `BIRD_MAX_TARGET_SPEED=30` control tracking response
+Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.02`
+filters detection noise, while `BIRD_DEADZONE_ENTER=0.01` and
+`BIRD_DEADZONE_EXIT=0.004` stop movement close to the image center.
+`BIRD_TRACK_GAIN=130` and `BIRD_MAX_TARGET_SPEED=30` provide fast travel;
+inside `BIRD_PRECISION_ZONE=0.25`, `BIRD_PRECISION_GAIN=20` brakes for accurate
+centering. These values control tracking response
 and speed in servo degrees per second. The defaults provide balanced movement;
 increase the filter time or reduce the speed for a smoother but slower response.
 Live tracking uses relative `R,pan_delta,tilt_delta` commands so the ESP32 never

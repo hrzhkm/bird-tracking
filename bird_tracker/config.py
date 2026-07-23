@@ -14,6 +14,18 @@ if FRAME_RATE <= 0:
 # Serial controller
 SERIAL_PORT = os.environ.get("BIRD_SERVO_PORT")
 SERIAL_BAUD = 115200
+SERVO_RESYNC_IDLE = float(
+    os.environ.get("BIRD_SERVO_RESYNC_IDLE", "2.5")
+)
+SERVO_RESYNC_SETTLE = float(
+    os.environ.get("BIRD_SERVO_RESYNC_SETTLE", "0.5")
+)
+
+if SERVO_RESYNC_IDLE <= 0 or SERVO_RESYNC_SETTLE < 0:
+    raise ValueError(
+        "BIRD_SERVO_RESYNC_IDLE must be positive and "
+        "BIRD_SERVO_RESYNC_SETTLE cannot be negative"
+    )
 
 # Image X increases to the right and image Y increases downward. On the current
 # pan/tilt bracket, increasing the pan angle turns right and increasing the
@@ -26,10 +38,12 @@ if PAN_SIGN not in (-1, 1) or TILT_SIGN not in (-1, 1):
 
 # Tracking controller. Speeds are degrees per second and image errors are
 # normalized to -0.5..+0.5.
-TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.05"))
-DEADZONE_ENTER = float(os.environ.get("BIRD_DEADZONE_ENTER", "0.06"))
-DEADZONE_EXIT = float(os.environ.get("BIRD_DEADZONE_EXIT", "0.035"))
+TARGET_FILTER_TAU = float(os.environ.get("BIRD_TARGET_FILTER_TAU", "0.02"))
+DEADZONE_ENTER = float(os.environ.get("BIRD_DEADZONE_ENTER", "0.01"))
+DEADZONE_EXIT = float(os.environ.get("BIRD_DEADZONE_EXIT", "0.004"))
 TRACK_GAIN = float(os.environ.get("BIRD_TRACK_GAIN", "130.0"))
+PRECISION_GAIN = float(os.environ.get("BIRD_PRECISION_GAIN", "20.0"))
+PRECISION_ZONE = float(os.environ.get("BIRD_PRECISION_ZONE", "0.25"))
 MAX_TARGET_SPEED = float(os.environ.get("BIRD_MAX_TARGET_SPEED", "30.0"))
 MAX_CONTROL_DT = 0.10
 CONTROL_DT = 0.02
@@ -44,10 +58,12 @@ if not 0 <= DEADZONE_EXIT < DEADZONE_ENTER <= 0.5:
         "dead zones must satisfy 0 <= BIRD_DEADZONE_EXIT "
         "< BIRD_DEADZONE_ENTER <= 0.5"
     )
-if min(TRACK_GAIN, MAX_TARGET_SPEED) <= 0:
+if min(TRACK_GAIN, PRECISION_GAIN, MAX_TARGET_SPEED) <= 0:
     raise ValueError(
-        "BIRD_TRACK_GAIN and BIRD_MAX_TARGET_SPEED must be greater than zero"
+        "tracking gains and BIRD_MAX_TARGET_SPEED must be greater than zero"
     )
+if not 0 < PRECISION_ZONE <= 0.5:
+    raise ValueError("BIRD_PRECISION_ZONE must be in (0, 0.5]")
 
 # Physical limits enforced by the ESP32, expressed in normal servo coordinates.
 PAN_SERVO_MIN, PAN_SERVO_MAX = 10, 170

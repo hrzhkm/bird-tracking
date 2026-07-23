@@ -18,8 +18,18 @@ def move_toward_at_speed(current, target, speed, dt):
     return move_toward(current, target, speed * max(dt, 0.0))
 
 
-def tracking_delta(error, dt, sign, gain, maximum_speed):
+def tracking_delta(
+    error,
+    dt,
+    sign,
+    gain,
+    maximum_speed,
+    precision_gain=None,
+    precision_zone=0.0,
+):
     """Convert image error into a bounded relative servo movement."""
+    if precision_gain is not None and abs(error) < precision_zone:
+        gain = precision_gain
     velocity = clamp(gain * error, -maximum_speed, maximum_speed)
     return sign * velocity * max(dt, 0.0)
 
@@ -38,6 +48,14 @@ def format_servo_command(pan_degrees, tilt_degrees):
 def format_tracking_command(pan_delta, tilt_delta):
     """Serialize a relative tracking movement."""
     return f"R,{pan_delta:.2f},{tilt_delta:.2f}\n"
+
+
+def servo_command_is_stale(now, last_command_time, idle_threshold):
+    """Return whether firmware may have detached since the last command."""
+    return (
+        last_command_time is None
+        or now - last_command_time >= idle_threshold
+    )
 
 
 class SmoothedAxis:

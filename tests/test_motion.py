@@ -1,11 +1,13 @@
 import math
 import unittest
+from collections import deque
 
 from bird_tracker.motion import (
     SmoothedAxis,
     format_servo_command,
     format_tracking_command,
     move_toward_at_speed,
+    servo_command_is_stale,
     track_axis,
     tracking_delta,
 )
@@ -100,6 +102,31 @@ class MotionHelperTests(unittest.TestCase):
             0.0,
         )
 
+    def test_servo_resyncs_after_firmware_detach_window(self):
+        self.assertFalse(
+            servo_command_is_stale(
+                now=12.4,
+                last_command_time=10.0,
+                idle_threshold=2.5,
+            )
+        )
+        self.assertTrue(
+            servo_command_is_stale(
+                now=12.5,
+                last_command_time=10.0,
+                idle_threshold=2.5,
+            )
+        )
+
+    def test_servo_without_command_history_requires_sync(self):
+        self.assertTrue(
+            servo_command_is_stale(
+                now=10.0,
+                last_command_time=None,
+                idle_threshold=2.5,
+            )
+        )
+
     def test_fast_profile_is_limited_to_two_degrees_per_frame(self):
         delta = tracking_delta(
             error=0.5,
@@ -111,11 +138,25 @@ class MotionHelperTests(unittest.TestCase):
 
         self.assertAlmostEqual(delta, 2.0)
 
-    def test_fast_profile_settles_without_crossing_center(self):
+    def test_precision_gain_brakes_near_center(self):
+        delta = tracking_delta(
+            error=0.1,
+            dt=0.1,
+            sign=1,
+            gain=130.0,
+            maximum_speed=30.0,
+            precision_gain=20.0,
+            precision_zone=0.25,
+        )
+
+        self.assertAlmostEqual(delta, 0.2)
+
+    def test_fast_profile_settles_with_camera_delay(self):
         acceleration = 180.0
         maximum_velocity = 60.0
         control_dt = 0.02
         frame_dt = 1 / 15
+        camera_delay = 0.27
         field_of_view = 60.0
         bird_angle = 18.0
         position = 0.0
@@ -125,12 +166,21 @@ class MotionHelperTests(unittest.TestCase):
         previous_error = None
         center_crossings = 0
         settled_errors = []
-        error_filter = SmoothedAxis(0.05, 0.06, 0.035)
+        position_history = deque([(0.0, position)])
+        error_filter = SmoothedAxis(0.02, 0.01, 0.004)
 
-        for tick in range(int(8 / control_dt)):
+        for tick in range(int(12 / control_dt)):
             now = tick * control_dt
+            position_history.append((now, position))
+            while (
+                len(position_history) > 1
+                and position_history[1][0] <= now - camera_delay
+            ):
+                position_history.popleft()
+
             if now + 1e-9 >= next_frame:
-                error = (bird_angle - position) / field_of_view
+                delayed_position = position_history[0][1]
+                error = (bird_angle - delayed_position) / field_of_view
                 filtered = error_filter.update(error, frame_dt)
                 delta = tracking_delta(
                     filtered,
@@ -138,17 +188,23 @@ class MotionHelperTests(unittest.TestCase):
                     sign=1,
                     gain=130.0,
                     maximum_speed=30.0,
+                    precision_gain=20.0,
+                    precision_zone=0.25,
                 )
                 if delta == 0.0 or delta * velocity < 0.0:
                     velocity = 0.0
                 target = position + max(-3.0, min(3.0, delta))
                 next_frame += frame_dt
 
-                if previous_error is not None and error * previous_error < 0:
+                actual_error = (bird_angle - position) / field_of_view
+                if (
+                    previous_error is not None
+                    and actual_error * previous_error < 0
+                ):
                     center_crossings += 1
-                previous_error = error
-                if now >= 4.0:
-                    settled_errors.append(abs(error))
+                previous_error = actual_error
+                if now >= 10.0:
+                    settled_errors.append(abs(actual_error))
 
             distance = target - position
             acceleration_step = acceleration * control_dt
@@ -199,7 +255,7 @@ class MotionHelperTests(unittest.TestCase):
                 position = next_position
 
         self.assertEqual(center_crossings, 0)
-        self.assertLess(max(settled_errors), 0.035)
+        self.assertLess(settled_errors[-1], 0.004)
 
 
 if __name__ == "__main__":
