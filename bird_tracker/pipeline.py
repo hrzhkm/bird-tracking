@@ -45,7 +45,7 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             bypass_max_size_buffers=3,
         )
         tracker_pipeline = TRACKER_PIPELINE(
-            class_id=config.BIRD_CLASS_ID,
+            class_id=-1,
             keep_new_frames=config.TRACKER_KEEP_NEW_FRAMES,
             keep_tracked_frames=config.TRACKER_KEEP_TRACKED_FRAMES,
             keep_lost_frames=config.TRACKER_KEEP_LOST_FRAMES,

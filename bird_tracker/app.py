@@ -18,6 +18,7 @@ def main():
         input=config.VIDEO_SOURCE,
         frame_rate=config.FRAME_RATE,
         hef_path=config.HEF_PATH,
+        labels_json=config.LABELS_JSON,
     )
 
     user_data = BirdTrackerState()

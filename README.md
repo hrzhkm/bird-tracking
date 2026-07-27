@@ -1,6 +1,7 @@
 # Bird Tracker
 
-Bird detection and pan/tilt tracking for the Raspberry Pi 5 and Hailo pipeline.
+Bird and monkey detection with pan/tilt tracking for the Raspberry Pi 5 and
+Hailo pipeline. Human detections never become arm targets.
 
 ## Run
 
@@ -17,6 +18,20 @@ USB camera. Then start the tracker:
 ```bash
 ./run.sh
 ```
+
+When versioned releases are installed under `models/`, the launcher provides
+three model slots:
+
+```bash
+./run.sh --candidate-safe  # candidate model, servo disabled
+./run.sh --candidate       # candidate model, servo enabled
+./run.sh                   # approved production model
+```
+
+The candidate commands require `models/candidate` to point to a complete
+release containing `model.hef` and `labels.json`. Normal startup uses
+`models/production` when present and otherwise retains the configured
+`BIRD_HEF_PATH` fallback.
 
 The launcher reads `.env` from this directory and can be called from anywhere.
 Relative paths in `.env` are resolved from the `bird-tracker` directory. The
@@ -46,6 +61,9 @@ leaky.
 `BIRD_CONFIDENCE` controls the minimum bird confidence used by both Hailo
 inference and the tracking callback. The default is `0.20`; increase it if the
 tracker produces false bird detections.
+
+`BIRD_TARGET_LABELS=bird,monkey` controls which detections may move the arm.
+`BIRD_SERVO_ENABLED=0` disables serial movement for safe candidate testing.
 
 `BIRD_DETECTION_HOLD=1.0` keeps the most recent valid bird box visible across
 brief inference misses without moving the servos from stale coordinates.
