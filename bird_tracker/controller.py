@@ -48,27 +48,32 @@ class BirdTrackerState(app_callback_class):
         self._last_command_time = None
         self._resync_until = None
 
-        self.serial_port = find_servo_port()
-        try:
-            if self.serial_port is None:
-                raise serial.SerialException(
-                    "no servo controller found under /dev/serial/by-id or /dev/ttyACM*"
-                )
-            self.ser = serial.Serial()
-            self.ser.port = self.serial_port
-            self.ser.baudrate = config.SERIAL_BAUD
-            self.ser.timeout = 0
-            self.ser.dtr = False
-            self.ser.rts = False
-            self.ser.open()
-            print(
-                f"[SERVO] Connected to {self.serial_port} "
-                f"at {config.SERIAL_BAUD} baud"
-            )
-            self._home_on_startup()
-        except serial.SerialException as error:
-            print(f"[WARN] Servo control disabled: {error}")
+        self.serial_port = find_servo_port() if config.SERVO_ENABLED else None
+        if not config.SERVO_ENABLED:
             self.ser = None
+            print("[SERVO] Disabled for safe model testing")
+        else:
+            try:
+                if self.serial_port is None:
+                    raise serial.SerialException(
+                        "no servo controller found under "
+                        "/dev/serial/by-id or /dev/ttyACM*"
+                    )
+                self.ser = serial.Serial()
+                self.ser.port = self.serial_port
+                self.ser.baudrate = config.SERIAL_BAUD
+                self.ser.timeout = 0
+                self.ser.dtr = False
+                self.ser.rts = False
+                self.ser.open()
+                print(
+                    f"[SERVO] Connected to {self.serial_port} "
+                    f"at {config.SERIAL_BAUD} baud"
+                )
+                self._home_on_startup()
+            except serial.SerialException as error:
+                print(f"[WARN] Servo control disabled: {error}")
+                self.ser = None
 
         self.lock = threading.Lock()
         self.bird_present = False
@@ -85,6 +90,8 @@ class BirdTrackerState(app_callback_class):
         self.aim_y = 0.5
         self.last_bird_bbox = None
         self.last_bird_confidence = 0.0
+        self.last_target_class_id = None
+        self.last_target_label = None
         self.last_detection_debug_time = 0.0
         self.active_track_id = None
         self.recovery_mode = None

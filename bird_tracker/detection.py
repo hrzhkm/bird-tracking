@@ -15,6 +15,7 @@ from hailo_apps.hailo_app_python.core.common.buffer_utils import (
 )
 
 from . import config
+from .targeting import choose_target, is_tracking_target
 
 
 def app_callback(pad, info, user_data):
@@ -43,13 +44,19 @@ def app_callback(pad, info, user_data):
         print(f"[DETECTIONS] {summary or 'none'}", flush=True)
         user_data.last_detection_debug_time = time.monotonic()
 
-    birds = []
+    targets = []
     for detection in detections:
         label = detection.get_label()
         confidence = detection.get_confidence()
 
-        if label != "bird" or confidence <= config.CONF_THRESH:
-            roi.remove_object(detection)
+        if not is_tracking_target(
+            label,
+            confidence,
+            config.TARGET_LABELS,
+            config.CONF_THRESH,
+        ):
+            if confidence <= config.CONF_THRESH:
+                roi.remove_object(detection)
             continue
 
         bbox = detection.get_bbox()
@@ -61,28 +68,36 @@ def app_callback(pad, info, user_data):
             if len(track_objects) == 1
             else None
         )
-        birds.append((center_x, center_y, bbox, confidence, track_id))
+        targets.append(
+            (
+                center_x,
+                center_y,
+                bbox,
+                confidence,
+                track_id,
+                detection.get_class_id(),
+                label,
+            )
+        )
 
     tracked = None
     recovery_target = None
-    if birds:
-        matching_track = [
-            bird
-            for bird in birds
-            if (
-                user_data.active_track_id is not None
-                and bird[4] == user_data.active_track_id
-            )
-        ]
-        candidates = matching_track or birds
-        tracked = min(
-            candidates,
-            key=lambda bird: (
-                (bird[0] - user_data.aim_x) ** 2
-                + (bird[1] - user_data.aim_y) ** 2
-            ),
+    if targets:
+        tracked = choose_target(
+            targets,
+            user_data.active_track_id,
+            user_data.aim_x,
+            user_data.aim_y,
         )
-        center_x, center_y, bbox, confidence, track_id = tracked
+        (
+            center_x,
+            center_y,
+            bbox,
+            confidence,
+            track_id,
+            class_id,
+            label,
+        ) = tracked
         now = time.monotonic()
         previous_recovery = user_data.recovery_mode
         user_data.target_predictor.observe(
@@ -101,6 +116,8 @@ def app_callback(pad, info, user_data):
             bbox.height(),
         )
         user_data.last_bird_confidence = confidence
+        user_data.last_target_class_id = class_id
+        user_data.last_target_label = label
         with user_data.lock:
             was_present = user_data.bird_present
             user_data.target_error_x = center_x - 0.5
@@ -109,9 +126,9 @@ def app_callback(pad, info, user_data):
             user_data.last_bird_time = now
             user_data.new_frame = True
         if previous_recovery is not None:
-            print(f"[BIRD] Target reacquired ({confidence:.2f})")
+            print(f"[TARGET] {label} reacquired ({confidence:.2f})")
         elif not was_present:
-            print(f"[BIRD] Target acquired ({confidence:.2f})")
+            print(f"[TARGET] {label} acquired ({confidence:.2f})")
     else:
         now = time.monotonic()
         prediction = user_data.target_predictor.predict(now)
@@ -142,18 +159,23 @@ def app_callback(pad, info, user_data):
 
         # Preserve the last box for display while the controller follows the
         # separately bounded predicted target.
-        if holding_detection and user_data.last_bird_bbox is not None:
+        if (
+            holding_detection
+            and user_data.last_bird_bbox is not None
+            and user_data.last_target_class_id is not None
+            and user_data.last_target_label is not None
+        ):
             xmin, ymin, box_width, box_height = user_data.last_bird_bbox
             held_bbox = hailo.HailoBBox(xmin, ymin, box_width, box_height)
             held_detection = hailo.HailoDetection(
                 held_bbox,
-                config.BIRD_CLASS_ID,
-                "bird",
+                user_data.last_target_class_id,
+                user_data.last_target_label,
                 user_data.last_bird_confidence,
             )
             roi.add_object(held_detection)
         elif prediction is None and was_present:
-            print("[BIRD] Target lost")
+            print("[TARGET] Target lost")
 
         if now - last_seen > config.HOME_TIMEOUT:
             user_data.aim_x, user_data.aim_y = 0.5, 0.5
@@ -199,7 +221,7 @@ def app_callback(pad, info, user_data):
 
         cv2.putText(
             frame,
-            f"Birds: {len(birds)}",
+            f"Targets: {len(targets)}",
             (10, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,

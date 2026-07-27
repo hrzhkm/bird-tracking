@@ -11,12 +11,14 @@ HEF_PATH = os.environ.get(
     "BIRD_HEF_PATH",
     "/usr/local/hailo/resources/models/hailo8/yolov6n.hef",
 )
+LABELS_JSON = os.environ.get("BIRD_LABELS_JSON")
 
 if FRAME_RATE <= 0:
     raise ValueError("BIRD_FRAME_RATE must be greater than zero")
 
 # Serial controller
 SERIAL_PORT = os.environ.get("BIRD_SERVO_PORT")
+SERVO_ENABLED = os.environ.get("BIRD_SERVO_ENABLED", "1") == "1"
 SERIAL_BAUD = 115200
 SERVO_RESYNC_IDLE = float(
     os.environ.get("BIRD_SERVO_RESYNC_IDLE", "2.5")
@@ -91,11 +93,19 @@ if not TILT_MIN <= HOME_TILT <= TILT_MAX:
         f"BIRD_HOME_TILT must be between {TILT_SERVO_MIN} and {TILT_SERVO_MAX}"
     )
 
-# Detection. Hailo's COCO label table uses class ID 15 for "bird".
-BIRD_CLASS_ID = 15
+# Detection. The custom model can drive the arm for birds and monkeys, while
+# humans remain visible but are never tracking targets.
+TARGET_LABELS = tuple(
+    label.strip()
+    for label in os.environ.get("BIRD_TARGET_LABELS", "bird,monkey").split(",")
+    if label.strip()
+)
 CONF_THRESH = float(os.environ.get("BIRD_CONFIDENCE", "0.20"))
 DETECTION_HOLD = float(os.environ.get("BIRD_DETECTION_HOLD", "1.0"))
 DETECTION_DEBUG = os.environ.get("BIRD_DETECTION_DEBUG", "0") == "1"
+
+if not TARGET_LABELS:
+    raise ValueError("BIRD_TARGET_LABELS must contain at least one label")
 
 # Lost-target recovery. Screen velocities use normalized frame units/second.
 PREDICTION_VELOCITY_TAU = float(

@@ -17,6 +17,34 @@ set -a
 source "${ENV_FILE}"
 set +a
 
+MODEL_SLOT=""
+case "${1:-}" in
+    --candidate-safe)
+        MODEL_SLOT="candidate"
+        export BIRD_SERVO_ENABLED=0
+        shift
+        ;;
+    --candidate)
+        MODEL_SLOT="candidate"
+        export BIRD_SERVO_ENABLED=1
+        shift
+        ;;
+esac
+
+if [[ -z "${MODEL_SLOT}" && -f "${SCRIPT_DIR}/models/production/model.hef" ]]; then
+    MODEL_SLOT="production"
+fi
+
+if [[ -n "${MODEL_SLOT}" ]]; then
+    MODEL_DIR="${SCRIPT_DIR}/models/${MODEL_SLOT}"
+    if [[ ! -f "${MODEL_DIR}/model.hef" || ! -f "${MODEL_DIR}/labels.json" ]]; then
+        echo "Incomplete ${MODEL_SLOT} model release: ${MODEL_DIR}" >&2
+        exit 1
+    fi
+    export BIRD_HEF_PATH="${MODEL_DIR}/model.hef"
+    export BIRD_LABELS_JSON="${MODEL_DIR}/labels.json"
+fi
+
 HAILO_EXAMPLES_DIR="${HAILO_EXAMPLES_DIR:-../hailo-rpi5-examples}"
 if [[ "${HAILO_EXAMPLES_DIR}" != /* ]]; then
     HAILO_EXAMPLES_DIR="${SCRIPT_DIR}/${HAILO_EXAMPLES_DIR}"
