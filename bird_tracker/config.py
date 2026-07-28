@@ -12,6 +12,10 @@ HEF_PATH = os.environ.get(
     "/usr/local/hailo/resources/models/hailo8/yolov6n.hef",
 )
 LABELS_JSON = os.environ.get("BIRD_LABELS_JSON")
+MODEL_VERSION = os.environ.get(
+    "BIRD_MODEL_VERSION",
+    os.path.basename(HEF_PATH),
+)
 
 if FRAME_RATE <= 0:
     raise ValueError("BIRD_FRAME_RATE must be greater than zero")

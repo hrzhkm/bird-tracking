@@ -43,6 +43,7 @@ if [[ -n "${MODEL_SLOT}" ]]; then
     fi
     export BIRD_HEF_PATH="${MODEL_DIR}/model.hef"
     export BIRD_LABELS_JSON="${MODEL_DIR}/labels.json"
+    export BIRD_MODEL_VERSION="${MODEL_SLOT} · $(basename "$(readlink -f "${MODEL_DIR}")")"
     set -- --hef-path "${BIRD_HEF_PATH}" --labels-json "${BIRD_LABELS_JSON}" "$@"
 fi
 

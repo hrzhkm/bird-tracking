@@ -31,7 +31,8 @@ three model slots:
 The candidate commands require `models/candidate` to point to a complete
 release containing `model.hef` and `labels.json`. Normal startup uses
 `models/production` when present and otherwise retains the configured
-`BIRD_HEF_PATH` fallback.
+`BIRD_HEF_PATH` fallback. The selected slot and model version are displayed in
+the bottom-left corner of the video.
 
 The launcher reads `.env` from this directory and can be called from anywhere.
 Relative paths in `.env` are resolved from the `bird-tracker` directory. The

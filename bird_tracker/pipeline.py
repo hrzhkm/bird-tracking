@@ -53,6 +53,11 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             qos=False,
         )
         callback_pipeline = USER_CALLBACK_PIPELINE()
+        version_overlay = (
+            f'textoverlay text="Model: {config.MODEL_VERSION}" '
+            'valignment=bottom halignment=left '
+            'font-desc="Sans 14" shaded-background=true'
+        )
         display_pipeline = DISPLAY_PIPELINE(
             video_sink=config.VIDEO_SINK,
             sync=self.sync,
@@ -64,6 +69,7 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             f"{inference_wrapper} ! "
             f"{tracker_pipeline} ! "
             f"{callback_pipeline} ! "
+            f"{version_overlay} ! "
             f"{display_pipeline}"
         )
         print(
@@ -73,6 +79,7 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             f"hailo-tracker=on/"
             f"{config.TRACKER_KEEP_TRACKED_FRAMES}+"
             f"{config.TRACKER_KEEP_LOST_FRAMES}-frames, "
+            f"model={config.MODEL_VERSION}, "
             f"sink={config.VIDEO_SINK}"
         )
         return pipeline
