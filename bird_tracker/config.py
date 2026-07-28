@@ -100,7 +100,7 @@ TARGET_LABELS = tuple(
     for label in os.environ.get("BIRD_TARGET_LABELS", "bird,monkey").split(",")
     if label.strip()
 )
-CONF_THRESH = float(os.environ.get("BIRD_CONFIDENCE", "0.20"))
+CONF_THRESH = float(os.environ.get("BIRD_CONFIDENCE", "0.5"))
 DETECTION_HOLD = float(os.environ.get("BIRD_DETECTION_HOLD", "1.0"))
 DETECTION_DEBUG = os.environ.get("BIRD_DETECTION_DEBUG", "0") == "1"
 

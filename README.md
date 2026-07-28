@@ -59,7 +59,7 @@ attached to the correct video frame; do not make those queues independently
 leaky.
 
 `BIRD_CONFIDENCE` controls the minimum bird confidence used by both Hailo
-inference and the tracking callback. The default is `0.20`; increase it if the
+inference and the tracking callback. The default is `0.5`; increase it if the
 tracker produces false bird detections.
 
 `BIRD_TARGET_LABELS=bird,monkey` controls which detections may move the arm.
