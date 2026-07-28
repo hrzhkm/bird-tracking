@@ -132,10 +132,10 @@ PREDICTION_MARGIN = float(os.environ.get("BIRD_PREDICTION_MARGIN", "0.20"))
 # the Hailo-8; the tracker operates on the resulting detection metadata.
 TRACKER_KEEP_NEW_FRAMES = int(os.environ.get("BIRD_TRACKER_KEEP_NEW_FRAMES", "3"))
 TRACKER_KEEP_TRACKED_FRAMES = int(
-    os.environ.get("BIRD_TRACKER_KEEP_TRACKED_FRAMES", "10")
+    os.environ.get("BIRD_TRACKER_KEEP_TRACKED_FRAMES", "60")
 )
 TRACKER_KEEP_LOST_FRAMES = int(
-    os.environ.get("BIRD_TRACKER_KEEP_LOST_FRAMES", "4")
+    os.environ.get("BIRD_TRACKER_KEEP_LOST_FRAMES", "30")
 )
 
 if DETECTION_HOLD < 0:

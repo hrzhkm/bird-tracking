@@ -43,6 +43,7 @@ if [[ -n "${MODEL_SLOT}" ]]; then
     fi
     export BIRD_HEF_PATH="${MODEL_DIR}/model.hef"
     export BIRD_LABELS_JSON="${MODEL_DIR}/labels.json"
+    set -- --hef-path "${BIRD_HEF_PATH}" --labels-json "${BIRD_LABELS_JSON}" "$@"
 fi
 
 HAILO_EXAMPLES_DIR="${HAILO_EXAMPLES_DIR:-../hailo-rpi5-examples}"

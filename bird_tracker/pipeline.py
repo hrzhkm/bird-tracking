@@ -70,7 +70,9 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             "[BIRD TRACKER] "
             f"confidence={config.CONF_THRESH:.2f}, "
             f"fps={self.frame_rate}, batch=1, "
-            f"hailo-tracker=on/{config.TRACKER_KEEP_TRACKED_FRAMES}-frames, "
+            f"hailo-tracker=on/"
+            f"{config.TRACKER_KEEP_TRACKED_FRAMES}+"
+            f"{config.TRACKER_KEEP_LOST_FRAMES}-frames, "
             f"sink={config.VIDEO_SINK}"
         )
         return pipeline
