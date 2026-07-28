@@ -80,15 +80,14 @@ def app_callback(pad, info, user_data):
             )
         )
 
-    tracked = None
+    tracked = choose_target(
+        targets,
+        user_data.active_track_id,
+        user_data.aim_x,
+        user_data.aim_y,
+    )
     recovery_target = None
-    if targets:
-        tracked = choose_target(
-            targets,
-            user_data.active_track_id,
-            user_data.aim_x,
-            user_data.aim_y,
-        )
+    if tracked is not None:
         (
             center_x,
             center_y,
@@ -126,9 +125,15 @@ def app_callback(pad, info, user_data):
             user_data.last_bird_time = now
             user_data.new_frame = True
         if previous_recovery is not None:
-            print(f"[TARGET] {label} reacquired ({confidence:.2f})")
+            print(
+                f"[TARGET] {label} reacquired "
+                f"(id={track_id}, confidence={confidence:.2f})"
+            )
         elif not was_present:
-            print(f"[TARGET] {label} acquired ({confidence:.2f})")
+            print(
+                f"[TARGET] {label} acquired "
+                f"(id={track_id}, confidence={confidence:.2f})"
+            )
     else:
         now = time.monotonic()
         prediction = user_data.target_predictor.predict(now)

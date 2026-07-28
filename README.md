@@ -68,13 +68,15 @@ tracker produces false bird detections.
 `BIRD_DETECTION_HOLD=1.0` keeps the most recent valid bird box visible across
 brief inference misses without moving the servos from stale coordinates.
 
-Hailo's metadata tracker now runs before the control callback, so its Kalman
-prediction bridges short detector misses instead of affecting only the display.
-The default 10-frame tracked window is followed by bounded lost-target
-recovery: recent screen velocity is extrapolated for 0.6 seconds, then the
-camera searches toward a likely exit edge for at most 1.2 seconds. A weak or
-non-edge-directed motion estimate stops instead of initiating a blind search.
-Tune the `BIRD_PREDICTION_*` values in `.env` if necessary.
+Hailo's metadata tracker runs before the control callback, so its Kalman
+prediction bridges detector misses while retaining the active target ID. The
+default 60 tracked plus 30 lost frames cover about three seconds at 30 FPS.
+While that ID is locked, another animal cannot take over merely because it is
+closer. Bounded lost-target recovery extrapolates recent screen velocity for
+0.6 seconds, then searches toward a likely exit edge for at most 1.2 seconds.
+A weak or non-edge-directed motion estimate stops instead of initiating a
+blind search. Tune the `BIRD_TRACKER_*` and `BIRD_PREDICTION_*` values in
+`.env` if necessary.
 
 At startup, `run.sh` verifies that a Hailo device is present and that its
 architecture matches `hailo_arch`. It exits instead of silently attempting a
