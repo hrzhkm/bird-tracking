@@ -2,8 +2,8 @@
 set -euo pipefail
 
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-host="${BIRD_TRACKER_HOST:-pi@100.80.235.77}"
-remote_dir="${BIRD_TRACKER_REMOTE_DIR:-/home/pi/bird-tracker}"
+host="${PI_HOST:-pi@100.80.235.77}"
+remote_dir="${PI_TRACKER_DIR:-/home/pi/bird-tracker}"
 
 mkdir -p "$root/dataset"
 ssh -o BatchMode=yes "$host" "test -d '$remote_dir/dataset'" || {

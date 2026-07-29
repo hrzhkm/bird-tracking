@@ -21,12 +21,12 @@ MODEL_SLOT=""
 case "${1:-}" in
     --candidate-safe)
         MODEL_SLOT="candidate"
-        export BIRD_SERVO_ENABLED=0
+        export SERVO_ENABLED=0
         shift
         ;;
     --candidate)
         MODEL_SLOT="candidate"
-        export BIRD_SERVO_ENABLED=1
+        export SERVO_ENABLED=1
         shift
         ;;
 esac
@@ -41,32 +41,24 @@ if [[ -n "${MODEL_SLOT}" ]]; then
         echo "Incomplete ${MODEL_SLOT} model release: ${MODEL_DIR}" >&2
         exit 1
     fi
-    export BIRD_HEF_PATH="${MODEL_DIR}/model.hef"
-    export BIRD_LABELS_JSON="${MODEL_DIR}/labels.json"
-    export BIRD_MODEL_VERSION="${MODEL_SLOT} · $(basename "$(readlink -f "${MODEL_DIR}")")"
-    set -- --hef-path "${BIRD_HEF_PATH}" --labels-json "${BIRD_LABELS_JSON}" "$@"
+    export MODEL_HEF_PATH="${MODEL_DIR}/model.hef"
+    export MODEL_LABELS_JSON="${MODEL_DIR}/labels.json"
+    export MODEL_VERSION="${MODEL_SLOT} · $(basename "$(readlink -f "${MODEL_DIR}")")"
+    set -- --hef-path "${MODEL_HEF_PATH}" --labels-json "${MODEL_LABELS_JSON}" "$@"
 fi
 
-HAILO_EXAMPLES_DIR="${HAILO_EXAMPLES_DIR:-../hailo-rpi5-examples}"
-if [[ "${HAILO_EXAMPLES_DIR}" != /* ]]; then
-    HAILO_EXAMPLES_DIR="${SCRIPT_DIR}/${HAILO_EXAMPLES_DIR}"
-fi
+HAILO_EXAMPLES_DIR="${SCRIPT_DIR}/../hailo-rpi5-examples"
 
 if [[ ! -d "${HAILO_EXAMPLES_DIR}" ]]; then
     echo "Hailo examples directory not found: ${HAILO_EXAMPLES_DIR}" >&2
-    echo "Set HAILO_EXAMPLES_DIR to its location and try again." >&2
     exit 1
 fi
 
 HAILO_EXAMPLES_DIR="$(cd -- "${HAILO_EXAMPLES_DIR}" && pwd)"
-PYTHON_BIN="${BIRD_TRACKER_PYTHON:-${HAILO_EXAMPLES_DIR}/venv/bin/python}"
-if [[ "${PYTHON_BIN}" != /* ]]; then
-    PYTHON_BIN="${SCRIPT_DIR}/${PYTHON_BIN}"
-fi
+PYTHON_BIN="${HAILO_EXAMPLES_DIR}/venv/bin/python"
 
 if [[ ! -x "${PYTHON_BIN}" ]]; then
     echo "Python environment not found: ${PYTHON_BIN}" >&2
-    echo "Set BIRD_TRACKER_PYTHON to a Python executable with the Hailo dependencies." >&2
     exit 1
 fi
 
