@@ -7,37 +7,14 @@ def clamp(value, low, high):
     return low if value < low else high if value > high else value
 
 
-def move_toward(current, target, maximum_delta):
-    if current < target:
-        return min(current + maximum_delta, target)
-    return max(current - maximum_delta, target)
+def predict_error(error, screen_velocity, lookahead):
+    """Project a delayed image error to the expected control time."""
+    return clamp(error + screen_velocity * lookahead, -0.5, 0.5)
 
 
-def move_toward_at_speed(current, target, speed, dt):
-    """Move toward a position at a rate expressed in degrees per second."""
-    return move_toward(current, target, speed * max(dt, 0.0))
-
-
-def tracking_delta(
-    error,
-    dt,
-    sign,
-    gain,
-    maximum_speed,
-    precision_gain=None,
-    precision_zone=0.0,
-):
-    """Convert image error into a bounded relative servo movement."""
-    if precision_gain is not None and abs(error) < precision_zone:
-        gain = precision_gain
-    velocity = clamp(gain * error, -maximum_speed, maximum_speed)
-    return sign * velocity * max(dt, 0.0)
-
-
-def track_axis(current, error, dt, sign, gain, maximum_speed, low, high):
-    """Integrate a normalized image error into a bounded angular target."""
-    delta = tracking_delta(error, dt, sign, gain, maximum_speed)
-    return clamp(current + delta, low, high)
+def tracking_velocity(error, sign, gain, maximum_speed):
+    """Convert image error into a bounded servo velocity."""
+    return sign * clamp(gain * error, -maximum_speed, maximum_speed)
 
 
 def format_servo_command(pan_degrees, tilt_degrees):
@@ -45,17 +22,9 @@ def format_servo_command(pan_degrees, tilt_degrees):
     return f"{pan_degrees:.2f},{tilt_degrees:.2f}\n"
 
 
-def format_tracking_command(pan_delta, tilt_delta):
-    """Serialize a relative tracking movement."""
-    return f"R,{pan_delta:.2f},{tilt_delta:.2f}\n"
-
-
-def servo_command_is_stale(now, last_command_time, idle_threshold):
-    """Return whether firmware may have detached since the last command."""
-    return (
-        last_command_time is None
-        or now - last_command_time >= idle_threshold
-    )
+def format_velocity_command(pan_velocity, tilt_velocity):
+    """Serialize desired tracking velocities in degrees per second."""
+    return f"V,{pan_velocity:.2f},{tilt_velocity:.2f}\n"
 
 
 class SmoothedAxis:

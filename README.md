@@ -90,22 +90,18 @@ must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
 `BIRD_PAN_SIGN` and `BIRD_TILT_SIGN` control the tracking direction for each
 axis and must be `1` or `-1`. Image Y and the tilt servo angle both increase
 downward on this bracket, so the default tilt sign is `1`.
-If the ESP32 command stream has been idle for `BIRD_SERVO_RESYNC_IDLE=2.5`
-seconds, the next target first reasserts the known absolute position and waits
-`BIRD_SERVO_RESYNC_SETTLE=0.5` seconds. This prevents physical drift while the
-servos are detached from corrupting the first relative tracking movement.
 
-Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.02`
-filters detection noise, while `BIRD_DEADZONE_ENTER=0.02` and
-`BIRD_DEADZONE_EXIT=0.01` stop movement close to the image center.
-`BIRD_TRACK_GAIN=130` and `BIRD_MAX_TARGET_SPEED=30` provide fast travel;
-inside `BIRD_PRECISION_ZONE=0.25`, `BIRD_PRECISION_GAIN=20` brakes for accurate
-centering. These values control tracking response
-and speed in servo degrees per second. The defaults provide balanced movement;
-increase the filter time or reduce the speed for a smoother but slower response.
-Live tracking uses relative `R,pan_delta,tilt_delta` commands so the ESP32 never
-queues a distant target beyond the bird. Absolute `pan,tilt` commands remain in
-use for startup and homing.
+Movement smoothing can be tuned in `.env`. `BIRD_TARGET_FILTER_TAU=0.08`
+filters detection noise, while `BIRD_DEADZONE_ENTER=0.01` and
+`BIRD_DEADZONE_EXIT=0.004` stop movement close to the image center.
+`BIRD_PAN_TRACK_GAIN=80`, `BIRD_TILT_TRACK_GAIN=60`, and
+`BIRD_MAX_TARGET_SPEED=30` control the continuous tracking speed.
+`BIRD_CONTROL_LOOKAHEAD=0.14` projects the measured screen motion forward to
+compensate for camera and inference delay. Increase it if the camera crosses
+the target before braking; reduce it if the camera consistently stops short.
+Live tracking uses `V,pan_speed,tilt_speed` commands. The ESP32 applies the
+acceleration limit and stops a stale velocity command automatically. Absolute
+`pan,tilt` commands remain in use for startup and homing.
 
 You can also select the servo controller there, preferably using its stable USB
 ID:

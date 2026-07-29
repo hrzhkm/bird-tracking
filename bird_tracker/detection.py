@@ -15,6 +15,7 @@ from hailo_apps.hailo_app_python.core.common.buffer_utils import (
 )
 
 from . import config
+from .motion import predict_error
 from .targeting import choose_target, is_tracking_target
 
 
@@ -119,8 +120,16 @@ def app_callback(pad, info, user_data):
         user_data.last_target_label = label
         with user_data.lock:
             was_present = user_data.bird_present
-            user_data.target_error_x = center_x - 0.5
-            user_data.target_error_y = center_y - 0.5
+            user_data.target_error_x = predict_error(
+                center_x - 0.5,
+                user_data.target_predictor.velocity_x,
+                config.CONTROL_LOOKAHEAD,
+            )
+            user_data.target_error_y = predict_error(
+                center_y - 0.5,
+                user_data.target_predictor.velocity_y,
+                config.CONTROL_LOOKAHEAD,
+            )
             user_data.bird_present = True
             user_data.last_bird_time = now
             user_data.new_frame = True
@@ -233,20 +242,11 @@ def app_callback(pad, info, user_data):
             (0, 255, 0),
             2,
         )
-        cv2.putText(
-            frame,
-            f"Pan: {user_data.pan_angle:+.0f}  Tilt: {user_data.tilt_angle:+.0f}",
-            (10, 60),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 255, 0),
-            2,
-        )
         if user_data.recovery_mode is not None:
             cv2.putText(
                 frame,
                 f"Recovery: {user_data.recovery_mode}",
-                (10, 90),
+                (10, 60),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 (0, 165, 255),
