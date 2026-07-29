@@ -3,15 +3,22 @@
 import os
 
 
+FALLBACK_MODEL_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "models", "v0.0.4"
+)
+
 # Video input. "usb" asks the Hailo pipeline to discover a USB camera.
 VIDEO_SOURCE = os.environ.get("BIRD_VIDEO_SOURCE", "usb")
 VIDEO_SINK = os.environ.get("BIRD_VIDEO_SINK", "ximagesink")
 FRAME_RATE = int(os.environ.get("BIRD_FRAME_RATE", "30"))
 HEF_PATH = os.environ.get(
     "BIRD_HEF_PATH",
-    "/usr/local/hailo/resources/models/hailo8/yolov6n.hef",
+    os.path.join(FALLBACK_MODEL_DIR, "model.hef"),
 )
-LABELS_JSON = os.environ.get("BIRD_LABELS_JSON")
+LABELS_JSON = os.environ.get(
+    "BIRD_LABELS_JSON",
+    os.path.join(FALLBACK_MODEL_DIR, "labels.json"),
+)
 MODEL_VERSION = os.environ.get(
     "BIRD_MODEL_VERSION",
     os.path.basename(HEF_PATH),

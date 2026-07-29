@@ -52,9 +52,10 @@ You can replace `usb` with a specific device such as `/dev/video0`. A command-li
 
 `BIRD_VIDEO_SINK=ximagesink` provides a stable X11/VNC display path.
 `BIRD_FRAME_RATE=30` matches the maximum 640x480 rate of the current USB
-camera. `BIRD_HEF_PATH` selects the installed YOLOv6n Hailo-8 model, which
-keeps the full pipeline at 30 FPS with lower inference latency than YOLOv8m.
-Motion speed is tuned independently below.
+camera. `BIRD_HEF_PATH` and `BIRD_LABELS_JSON` select the known-good custom
+`v0.0.4` Hailo-8 release when no production model is installed. Candidate and
+production slots override both paths. Motion speed is tuned independently
+below.
 Inference and aggregation queues remain synchronized so detection metadata is
 attached to the correct video frame; do not make those queues independently
 leaky.
