@@ -97,8 +97,9 @@ Live tracking uses `V,pan_speed,tilt_speed` commands. The ESP32 applies the
 acceleration limit and stops a stale velocity command automatically. Absolute
 `pan,tilt` commands remain in use for startup and homing.
 
-You can also select the servo controller there, preferably using its stable USB
-ID:
+The tracker automatically selects an ESP32 with a CP2102 USB adapter and will
+not fall back to unrelated serial devices. Restart `run.sh` after reconnecting
+the USB cable. For another adapter, set its stable USB ID:
 
 ```bash
 SERVO_PORT=/dev/serial/by-id/your-device

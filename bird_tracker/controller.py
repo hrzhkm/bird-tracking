@@ -26,11 +26,7 @@ def find_servo_port():
         return config.SERIAL_PORT
 
     preferred = sorted(glob.glob("/dev/serial/by-id/*CP2102*"))
-    if preferred:
-        return preferred[0]
-
-    fallback = sorted(glob.glob("/dev/ttyUSB*") + glob.glob("/dev/ttyACM*"))
-    return fallback[0] if fallback else None
+    return preferred[0] if preferred else None
 
 
 class BirdTrackerState(app_callback_class):
@@ -53,8 +49,8 @@ class BirdTrackerState(app_callback_class):
             try:
                 if self.serial_port is None:
                     raise serial.SerialException(
-                        "no servo controller found under "
-                        "/dev/serial/by-id or /dev/ttyACM*"
+                        "ESP32 CP2102 not detected; check the USB data cable "
+                        "or set SERVO_PORT"
                     )
                 self.ser = serial.Serial()
                 self.ser.port = self.serial_port
