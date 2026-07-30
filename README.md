@@ -50,8 +50,8 @@ camera. `MODEL_HEF_PATH` and `MODEL_LABELS_JSON` select the known-good custom
 production slots override both paths. Motion speed is tuned independently
 below.
 Inference and aggregation queues remain synchronized so detection metadata is
-attached to the correct video frame; do not make those queues independently
-leaky.
+attached to the correct video frame. Only whole frames are dropped before the
+split or after aggregation when the pipeline falls behind.
 
 `PEST_CONFIDENCE` controls the minimum pest confidence used by both Hailo
 inference and the tracking callback. The default is `0.5`; increase it if the
@@ -60,18 +60,12 @@ tracker produces false detections.
 `PEST_TARGET_LABELS=bird,monkey` controls which detections may move the arm.
 `SERVO_ENABLED=0` disables serial movement for safe candidate testing.
 
-`PEST_DETECTION_HOLD=1.0` keeps the most recent valid target box visible across
-brief inference misses without moving the servos from stale coordinates.
-
-Hailo's metadata tracker runs before the control callback, so its Kalman
-prediction bridges detector misses while retaining the active target ID. The
-default 60 tracked plus 30 lost frames cover about three seconds at 30 FPS.
-While that ID is locked, another animal cannot take over merely because it is
-closer. Bounded lost-target recovery extrapolates recent screen velocity for
-0.6 seconds, then searches toward a likely exit edge for at most 1.2 seconds.
-A weak or non-edge-directed motion estimate stops instead of initiating a
-blind search. Tune the `HAILO_TRACKER_*` and `LOST_TARGET_*` values in
-`.env` if necessary.
+Hailo's metadata tracker runs before the control callback to retain target
+identity. It stops emitting a box after one unmatched frame, while lost IDs are
+kept internally for reacquisition. A fresh detector miss shows only the orange
+predicted aim point and coasts for at most
+`LOST_TARGET_COAST_SECONDS=0.20`; larger values are capped at 200 ms so old
+`.env` files remain safe. Tracking then sends an explicit stop.
 
 At startup, `run.sh` verifies that a Hailo device is present and that its
 architecture matches `hailo_arch`. It exits instead of silently attempting a
@@ -93,9 +87,16 @@ filters detection noise, while `TRACKING_DEADZONE_ENTER=0.01` and
 `TRACKING_LOOKAHEAD=0.14` projects the measured screen motion forward to
 compensate for camera and inference delay. Increase it if the camera crosses
 the target before braking; reduce it if the camera consistently stops short.
+`TRACKING_MAX_FRAME_AGE=0.25` prevents camera frames older than 250 ms from
+commanding the servos. Rejected frames print a rate-limited `[LATENCY]` warning.
 Live tracking uses `V,pan_speed,tilt_speed` commands. The ESP32 applies the
 acceleration limit and stops a stale velocity command automatically. Absolute
 `pan,tilt` commands remain in use for startup and homing.
+
+For latency diagnosis, start with `HAILO_MONITOR=1 ./run.sh --show-fps`, then
+run `hailortcli monitor` in another terminal. Use `htop` for host load and
+`vcgencmd get_throttled && vcgencmd measure_temp` for Raspberry Pi power and
+thermal status.
 
 The tracker automatically selects an ESP32 with a CP2102 USB adapter and will
 not fall back to unrelated serial devices. Restart `run.sh` after reconnecting

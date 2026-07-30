@@ -4,6 +4,8 @@ from collections import deque
 
 from bird_tracker.motion import (
     SmoothedAxis,
+    frame_age_seconds,
+    frame_is_fresh,
     format_servo_command,
     format_velocity_command,
     predict_error,
@@ -39,6 +41,21 @@ class SmoothedAxisTests(unittest.TestCase):
 
 
 class MotionHelperTests(unittest.TestCase):
+    def test_frame_age_uses_pipeline_running_time(self):
+        self.assertEqual(
+            frame_age_seconds(
+                clock_time=2_000_000_000,
+                base_time=1_000_000_000,
+                presentation_time=750_000_000,
+            ),
+            0.25,
+        )
+
+    def test_stale_or_untimed_frames_are_rejected(self):
+        self.assertTrue(frame_is_fresh(0.25, 0.25))
+        self.assertFalse(frame_is_fresh(0.251, 0.25))
+        self.assertFalse(frame_is_fresh(None, 0.25))
+
     def test_tracking_velocity_is_bounded_and_respects_direction(self):
         self.assertEqual(
             tracking_velocity(0.5, 1, 80.0, 30.0),

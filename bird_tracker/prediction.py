@@ -6,26 +6,20 @@ from .motion import clamp
 
 
 class LostTargetRecovery:
-    """Estimate screen velocity and produce coast/search recovery targets."""
+    """Estimate screen velocity and briefly coast through detector misses."""
 
     def __init__(
         self,
         velocity_tau,
         coast_seconds,
-        search_seconds,
         minimum_speed,
         maximum_speed,
-        edge_zone,
-        search_error,
         prediction_margin,
     ):
         self.velocity_tau = velocity_tau
         self.coast_seconds = coast_seconds
-        self.search_seconds = search_seconds
         self.minimum_speed = minimum_speed
         self.maximum_speed = maximum_speed
-        self.edge_zone = edge_zone
-        self.search_error = search_error
         self.prediction_margin = prediction_margin
         self.reset()
 
@@ -82,44 +76,17 @@ class LostTargetRecovery:
         if speed < self.minimum_speed:
             return None
 
-        if age <= self.coast_seconds:
-            predicted_x = clamp(
-                self.last_x + self.velocity_x * age,
-                -self.prediction_margin,
-                1.0 + self.prediction_margin,
-            )
-            predicted_y = clamp(
-                self.last_y + self.velocity_y * age,
-                -self.prediction_margin,
-                1.0 + self.prediction_margin,
-            )
-            return predicted_x - 0.5, predicted_y - 0.5, "coast"
-
-        if age > self.coast_seconds + self.search_seconds:
+        if age > self.coast_seconds:
             return None
 
-        projected_x = self.last_x + self.velocity_x * self.coast_seconds
-        projected_y = self.last_y + self.velocity_y * self.coast_seconds
-        horizontal = self._exit_direction(
-            projected_x,
-            self.velocity_x,
+        predicted_x = clamp(
+            self.last_x + self.velocity_x * age,
+            -self.prediction_margin,
+            1.0 + self.prediction_margin,
         )
-        vertical = self._exit_direction(
-            projected_y,
-            self.velocity_y,
+        predicted_y = clamp(
+            self.last_y + self.velocity_y * age,
+            -self.prediction_margin,
+            1.0 + self.prediction_margin,
         )
-        if horizontal == 0 and vertical == 0:
-            return None
-
-        return (
-            horizontal * self.search_error,
-            vertical * self.search_error,
-            "search",
-        )
-
-    def _exit_direction(self, projected, velocity):
-        if projected <= self.edge_zone and velocity < -self.minimum_speed:
-            return -1
-        if projected >= 1.0 - self.edge_zone and velocity > self.minimum_speed:
-            return 1
-        return 0
+        return predicted_x - 0.5, predicted_y - 0.5, "coast"

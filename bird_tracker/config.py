@@ -52,6 +52,7 @@ MAX_TARGET_SPEED = float(os.environ.get("TRACKING_MAX_SPEED", "30.0"))
 CONTROL_LOOKAHEAD = float(
     os.environ.get("TRACKING_LOOKAHEAD", "0.14")
 )
+MAX_FRAME_AGE = float(os.environ.get("TRACKING_MAX_FRAME_AGE", "0.25"))
 MAX_CONTROL_DT = 0.10
 CONTROL_DT = 0.02
 HOME_TIMEOUT = 5.0
@@ -71,6 +72,8 @@ if min(PAN_TRACK_GAIN, TILT_TRACK_GAIN, MAX_TARGET_SPEED) <= 0:
     )
 if CONTROL_LOOKAHEAD < 0:
     raise ValueError("TRACKING_LOOKAHEAD cannot be negative")
+if MAX_FRAME_AGE <= 0:
+    raise ValueError("TRACKING_MAX_FRAME_AGE must be greater than zero")
 
 # Physical limits enforced by the ESP32, expressed in normal servo coordinates.
 PAN_SERVO_MIN, PAN_SERVO_MAX = 10, 170
@@ -102,7 +105,6 @@ TARGET_LABELS = tuple(
     if label.strip()
 )
 CONF_THRESH = float(os.environ.get("PEST_CONFIDENCE", "0.5"))
-DETECTION_HOLD = float(os.environ.get("PEST_DETECTION_HOLD", "1.0"))
 DETECTION_DEBUG = os.environ.get("PEST_DETECTION_DEBUG", "0") == "1"
 
 if not TARGET_LABELS:
@@ -112,48 +114,32 @@ if not TARGET_LABELS:
 PREDICTION_VELOCITY_TAU = float(
     os.environ.get("LOST_TARGET_VELOCITY_TAU", "0.15")
 )
-PREDICTION_COAST = float(os.environ.get("LOST_TARGET_COAST_SECONDS", "0.60"))
-PREDICTION_SEARCH = float(os.environ.get("LOST_TARGET_SEARCH_SECONDS", "1.20"))
+PREDICTION_COAST = min(
+    float(os.environ.get("LOST_TARGET_COAST_SECONDS", "0.20")),
+    0.20,
+)
 PREDICTION_MIN_SPEED = float(
     os.environ.get("LOST_TARGET_MIN_SPEED", "0.12")
 )
 PREDICTION_MAX_SPEED = float(
     os.environ.get("LOST_TARGET_MAX_SPEED", "2.0")
 )
-PREDICTION_EDGE_ZONE = float(
-    os.environ.get("LOST_TARGET_EDGE_ZONE", "0.20")
-)
-PREDICTION_SEARCH_ERROR = float(
-    os.environ.get("LOST_TARGET_SEARCH_ERROR", "0.30")
-)
 PREDICTION_MARGIN = float(os.environ.get("LOST_TARGET_MARGIN", "0.20"))
 
-# Hailo metadata tracker. This bridges short YOLO misses and keeps the target
-# identity stable while the camera is moving. Inference itself still runs on
-# the Hailo-8; the tracker operates on the resulting detection metadata.
+# Keep target identity across misses without emitting unmatched predicted boxes.
 TRACKER_KEEP_NEW_FRAMES = int(os.environ.get("HAILO_TRACKER_KEEP_NEW_FRAMES", "3"))
-TRACKER_KEEP_TRACKED_FRAMES = int(
-    os.environ.get("HAILO_TRACKER_KEEP_TRACKED_FRAMES", "60")
-)
+TRACKER_KEEP_TRACKED_FRAMES = 1
 TRACKER_KEEP_LOST_FRAMES = int(
     os.environ.get("HAILO_TRACKER_KEEP_LOST_FRAMES", "30")
 )
 
-if DETECTION_HOLD < 0:
-    raise ValueError("PEST_DETECTION_HOLD cannot be negative")
-
 if min(
     PREDICTION_VELOCITY_TAU,
     PREDICTION_COAST,
-    PREDICTION_SEARCH,
     PREDICTION_MIN_SPEED,
     PREDICTION_MAX_SPEED,
 ) < 0:
     raise ValueError("lost-target timing and speed values cannot be negative")
-if not 0 < PREDICTION_EDGE_ZONE < 0.5:
-    raise ValueError("LOST_TARGET_EDGE_ZONE must be between 0 and 0.5")
-if not 0 < PREDICTION_SEARCH_ERROR <= 0.5:
-    raise ValueError("LOST_TARGET_SEARCH_ERROR must be in (0, 0.5]")
 if not 0 <= PREDICTION_MARGIN <= 0.5:
     raise ValueError("LOST_TARGET_MARGIN must be between 0 and 0.5")
 if PREDICTION_MAX_SPEED < PREDICTION_MIN_SPEED:

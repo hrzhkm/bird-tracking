@@ -77,25 +77,19 @@ class BirdTrackerState(app_callback_class):
         self.last_bird_time = time.monotonic()
         self.new_frame = False
         self.stop_tracking = False
+        self.last_latency_warning_time = 0.0
 
         # Callback-only sticky aim point used to select the nearest target.
         self.aim_x = 0.5
         self.aim_y = 0.5
-        self.last_bird_bbox = None
-        self.last_bird_confidence = 0.0
-        self.last_target_class_id = None
-        self.last_target_label = None
         self.last_detection_debug_time = 0.0
         self.active_track_id = None
         self.recovery_mode = None
         self.target_predictor = LostTargetRecovery(
             config.PREDICTION_VELOCITY_TAU,
             config.PREDICTION_COAST,
-            config.PREDICTION_SEARCH,
             config.PREDICTION_MIN_SPEED,
             config.PREDICTION_MAX_SPEED,
-            config.PREDICTION_EDGE_ZONE,
-            config.PREDICTION_SEARCH_ERROR,
             config.PREDICTION_MARGIN,
         )
         self._pan_filter = SmoothedAxis(

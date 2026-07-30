@@ -15,6 +15,17 @@ from hailo_apps.hailo_app_python.core.gstreamer.gstreamer_helper_pipelines impor
 from . import config
 
 
+def _limit_queue(pipeline, name, leaky="no"):
+    old = f"name={name} leaky=no max-size-buffers=3"
+    if old not in pipeline:
+        raise RuntimeError(f"Hailo pipeline queue not found: {name}")
+    return pipeline.replace(
+        old,
+        f"name={name} leaky={leaky} max-size-buffers=1",
+        1,
+    )
+
+
 class LowLatencyDetectionApp(GStreamerDetectionApp):
     """Low-latency Hailo detection with metadata object tracking."""
 
@@ -48,7 +59,17 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
         )
         inference_wrapper = INFERENCE_PIPELINE_WRAPPER(
             inference_pipeline,
-            bypass_max_size_buffers=3,
+            bypass_max_size_buffers=1,
+        )
+        inference_wrapper = _limit_queue(
+            inference_wrapper,
+            "inference_wrapper_input_q",
+            "downstream",
+        )
+        inference_wrapper = _limit_queue(
+            inference_wrapper,
+            "inference_wrapper_output_q",
+            "downstream",
         )
         tracker_pipeline = TRACKER_PIPELINE(
             class_id=-1,
@@ -58,7 +79,9 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             keep_past_metadata=True,
             qos=False,
         )
+        tracker_pipeline = _limit_queue(tracker_pipeline, "hailo_tracker_q")
         callback_pipeline = USER_CALLBACK_PIPELINE()
+        callback_pipeline = _limit_queue(callback_pipeline, "identity_callback_q")
         version_overlay = (
             f'textoverlay text="Model: {config.MODEL_VERSION}" '
             'valignment=bottom halignment=left '
@@ -69,6 +92,16 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             sync=self.sync,
             show_fps=self.show_fps,
         )
+        display_pipeline = _limit_queue(
+            display_pipeline,
+            "hailo_display_overlay_q",
+            "downstream",
+        )
+        display_pipeline = _limit_queue(
+            display_pipeline,
+            "hailo_display_videoconvert_q",
+        )
+        display_pipeline = _limit_queue(display_pipeline, "hailo_display_q")
 
         pipeline = (
             f"{source_pipeline} ! "

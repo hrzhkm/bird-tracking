@@ -15,7 +15,7 @@ from hailo_apps.hailo_app_python.core.common.buffer_utils import (
 )
 
 from . import config
-from .motion import predict_error
+from .motion import frame_age_seconds, frame_is_fresh, predict_error
 from .targeting import choose_target, is_tracking_target
 
 
@@ -33,6 +33,59 @@ def app_callback(pad, info, user_data):
 
     roi = hailo.get_roi_from_buffer(buffer)
     detections = roi.get_objects_typed(hailo.HAILO_DETECTION)
+
+    element = pad.get_parent_element()
+    clock = element.get_clock()
+    base_time = element.get_base_time()
+    frame_age = None
+    if (
+        clock is not None
+        and base_time != Gst.CLOCK_TIME_NONE
+        and buffer.pts != Gst.CLOCK_TIME_NONE
+    ):
+        frame_age = frame_age_seconds(
+            clock.get_time(),
+            base_time,
+            buffer.pts,
+        )
+
+    if not frame_is_fresh(frame_age, config.MAX_FRAME_AGE):
+        for detection in detections:
+            if detection.get_label() in config.TARGET_LABELS:
+                roi.remove_object(detection)
+
+        with user_data.lock:
+            user_data.bird_present = False
+            user_data.new_frame = False
+            user_data.stop_tracking = True
+        user_data.aim_x, user_data.aim_y = 0.5, 0.5
+        user_data.active_track_id = None
+        user_data.recovery_mode = None
+        user_data.target_predictor.reset()
+
+        now = time.monotonic()
+        if now - user_data.last_latency_warning_time >= 1.0:
+            age = (
+                "unknown"
+                if frame_age is None
+                else f"{frame_age * 1000:.0f} ms"
+            )
+            print(f"[LATENCY] Dropping stale control frame ({age})", flush=True)
+            user_data.last_latency_warning_time = now
+
+        if user_data.use_frame:
+            cv2.putText(
+                frame,
+                "STALE FRAME",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0, 0, 255),
+                2,
+            )
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            user_data.set_frame(frame)
+        return Gst.PadProbeReturn.OK
 
     if (
         config.DETECTION_DEBUG
@@ -109,15 +162,6 @@ def app_callback(pad, info, user_data):
         user_data.active_track_id = track_id
         user_data.recovery_mode = None
         user_data.aim_x, user_data.aim_y = center_x, center_y
-        user_data.last_bird_bbox = (
-            bbox.xmin(),
-            bbox.ymin(),
-            bbox.width(),
-            bbox.height(),
-        )
-        user_data.last_bird_confidence = confidence
-        user_data.last_target_class_id = class_id
-        user_data.last_target_label = label
         with user_data.lock:
             was_present = user_data.bird_present
             user_data.target_error_x = predict_error(
@@ -150,7 +194,6 @@ def app_callback(pad, info, user_data):
         with user_data.lock:
             was_present = user_data.bird_present
             last_seen = user_data.last_bird_time
-            holding_detection = now - last_seen <= config.DETECTION_HOLD
             if prediction is not None:
                 error_x, error_y, recovery_mode = prediction
                 user_data.target_error_x = error_x
@@ -159,8 +202,8 @@ def app_callback(pad, info, user_data):
                 user_data.new_frame = True
             else:
                 recovery_mode = None
-                user_data.bird_present = holding_detection
-                if previous_recovery is not None and not holding_detection:
+                user_data.bird_present = False
+                if was_present:
                     user_data.stop_tracking = True
 
         user_data.recovery_mode = recovery_mode
@@ -171,24 +214,7 @@ def app_callback(pad, info, user_data):
             if recovery_mode != previous_recovery:
                 print(f"[BIRD] Recovery: {recovery_mode}")
 
-        # Preserve the last box for display while the controller follows the
-        # separately bounded predicted target.
-        if (
-            holding_detection
-            and user_data.last_bird_bbox is not None
-            and user_data.last_target_class_id is not None
-            and user_data.last_target_label is not None
-        ):
-            xmin, ymin, box_width, box_height = user_data.last_bird_bbox
-            held_bbox = hailo.HailoBBox(xmin, ymin, box_width, box_height)
-            held_detection = hailo.HailoDetection(
-                held_bbox,
-                user_data.last_target_class_id,
-                user_data.last_target_label,
-                user_data.last_bird_confidence,
-            )
-            roi.add_object(held_detection)
-        elif prediction is None and was_present:
+        if prediction is None and was_present:
             print("[TARGET] Target lost")
 
         if now - last_seen > config.HOME_TIMEOUT:

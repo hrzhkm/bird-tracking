@@ -12,6 +12,15 @@ def predict_error(error, screen_velocity, lookahead):
     return clamp(error + screen_velocity * lookahead, -0.5, 0.5)
 
 
+def frame_age_seconds(clock_time, base_time, presentation_time):
+    """Return how long a live frame has spent in the pipeline."""
+    return max(clock_time - base_time - presentation_time, 0) / 1_000_000_000
+
+
+def frame_is_fresh(age, maximum_age):
+    return age is not None and age <= maximum_age
+
+
 def tracking_velocity(error, sign, gain, maximum_speed):
     """Convert image error into a bounded servo velocity."""
     return sign * clamp(gain * error, -maximum_speed, maximum_speed)
