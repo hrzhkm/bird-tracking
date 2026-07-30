@@ -79,8 +79,8 @@ CPU-only path. Command-line options remain available and `.env` now supplies
 the actual default input and frame rate without launcher overrides.
 
 `SERVO_HOME_TILT` and `SERVO_HOME_PAN` set the home position in normal `0..180`
-servo coordinates. The configured defaults are tilt `80` and pan `70`. Values
-must remain within the ESP32 joint limits: pan `10..170`, tilt `20..120`.
+servo coordinates. The configured defaults are tilt `100` and pan `90`. Values
+must remain within the ESP32 joint limits: pan `10..170`, tilt `35..135`.
 `SERVO_PAN_SIGN` and `SERVO_TILT_SIGN` control the tracking direction for each
 axis and must be `1` or `-1`. Image Y and the tilt servo angle both increase
 downward on this bracket, so the default tilt sign is `1`.

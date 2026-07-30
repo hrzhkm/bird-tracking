@@ -74,7 +74,7 @@ if CONTROL_LOOKAHEAD < 0:
 
 # Physical limits enforced by the ESP32, expressed in normal servo coordinates.
 PAN_SERVO_MIN, PAN_SERVO_MAX = 10, 170
-TILT_SERVO_MIN, TILT_SERVO_MAX = 20, 120
+TILT_SERVO_MIN, TILT_SERVO_MAX = 35, 135
 
 # The Python controller uses -90..+90 internally, where 0 is servo position 90.
 PAN_MIN, PAN_MAX = PAN_SERVO_MIN - 90, PAN_SERVO_MAX - 90
@@ -82,8 +82,8 @@ TILT_MIN, TILT_MAX = TILT_SERVO_MIN - 90, TILT_SERVO_MAX - 90
 
 # Home values in .env use normal 0..180 servo coordinates. Convert them to
 # the controller's internal -90..+90 coordinates here.
-HOME_PAN = float(os.environ.get("SERVO_HOME_PAN", "70")) - 90.0
-HOME_TILT = float(os.environ.get("SERVO_HOME_TILT", "80")) - 90.0
+HOME_PAN = float(os.environ.get("SERVO_HOME_PAN", "90")) - 90.0
+HOME_TILT = float(os.environ.get("SERVO_HOME_TILT", "100")) - 90.0
 
 if not PAN_MIN <= HOME_PAN <= PAN_MAX:
     raise ValueError(
