@@ -25,11 +25,11 @@ def find_servo_port():
     if config.SERIAL_PORT:
         return config.SERIAL_PORT
 
-    preferred = sorted(glob.glob("/dev/serial/by-id/*USB_Single_Serial*"))
+    preferred = sorted(glob.glob("/dev/serial/by-id/*CP2102*"))
     if preferred:
         return preferred[0]
 
-    fallback = sorted(glob.glob("/dev/ttyACM*"))
+    fallback = sorted(glob.glob("/dev/ttyUSB*") + glob.glob("/dev/ttyACM*"))
     return fallback[0] if fallback else None
 
 
