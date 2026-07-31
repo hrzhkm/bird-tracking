@@ -55,6 +55,7 @@ def create_focus_window(device):
     if not device.startswith("/dev/video"):
         return None
 
+    os.environ.setdefault("GDK_BACKEND", "x11")
     import gi
 
     gi.require_version("Gtk", "3.0")
@@ -66,6 +67,7 @@ def create_focus_window(device):
     window = Gtk.Window(title="Camera Focus")
     window.set_keep_above(True)
     window.set_resizable(False)
+    window.move(20, 80)
 
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     row.set_border_width(10)
