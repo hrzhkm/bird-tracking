@@ -37,13 +37,6 @@ class LowLatencyDetectionApp(GStreamerDetectionApp):
             frame_rate=self.frame_rate,
             sync=self.sync,
         )
-        if self.video_source.startswith("/dev/video"):
-            source_pipeline = source_pipeline.replace(
-                "v4l2src ",
-                'v4l2src extra-controls="c,focus_automatic_continuous=0" ',
-                1,
-            )
-
         thresholds = (
             f"nms-score-threshold={config.CONF_THRESH} "
             "nms-iou-threshold=0.45 "
