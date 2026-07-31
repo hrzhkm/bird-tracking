@@ -88,7 +88,11 @@ Movement smoothing can be tuned in `.env`. `TRACKING_FILTER_TAU=0.08`
 filters detection noise, while `TRACKING_DEADZONE_ENTER=0.01` and
 `TRACKING_DEADZONE_EXIT=0.004` stop movement close to the image center.
 `TRACKING_PAN_GAIN=80`, `TRACKING_TILT_GAIN=60`, and
-`TRACKING_MAX_SPEED=30` control the continuous tracking speed.
+`TRACKING_MAX_SPEED=45` control the continuous tracking speed.
+`TRACKING_FAR_BOOST=2` smoothly adds speed while the target is far from center
+without changing the base response at center. Use max speed/boost `40/1.5` for
+conservative tracking, `45/2` for balanced tracking, or `60/4` for aggressive
+tracking.
 `TRACKING_LOOKAHEAD=0.14` projects the measured screen motion forward to
 compensate for camera and inference delay. Increase it if the camera crosses
 the target before braking; reduce it if the camera consistently stops short.

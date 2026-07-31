@@ -48,7 +48,8 @@ DEADZONE_ENTER = float(os.environ.get("TRACKING_DEADZONE_ENTER", "0.01"))
 DEADZONE_EXIT = float(os.environ.get("TRACKING_DEADZONE_EXIT", "0.004"))
 PAN_TRACK_GAIN = float(os.environ.get("TRACKING_PAN_GAIN", "80.0"))
 TILT_TRACK_GAIN = float(os.environ.get("TRACKING_TILT_GAIN", "60.0"))
-MAX_TARGET_SPEED = float(os.environ.get("TRACKING_MAX_SPEED", "30.0"))
+MAX_TARGET_SPEED = float(os.environ.get("TRACKING_MAX_SPEED", "45.0"))
+FAR_BOOST = float(os.environ.get("TRACKING_FAR_BOOST", "2.0"))
 CONTROL_LOOKAHEAD = float(
     os.environ.get("TRACKING_LOOKAHEAD", "0.14")
 )
@@ -70,6 +71,10 @@ if min(PAN_TRACK_GAIN, TILT_TRACK_GAIN, MAX_TARGET_SPEED) <= 0:
     raise ValueError(
         "tracking gains and TRACKING_MAX_SPEED must be greater than zero"
     )
+if MAX_TARGET_SPEED > 60:
+    raise ValueError("TRACKING_MAX_SPEED cannot exceed 60")
+if FAR_BOOST < 0:
+    raise ValueError("TRACKING_FAR_BOOST cannot be negative")
 if CONTROL_LOOKAHEAD < 0:
     raise ValueError("TRACKING_LOOKAHEAD cannot be negative")
 if MAX_FRAME_AGE <= 0:

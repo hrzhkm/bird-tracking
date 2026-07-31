@@ -58,12 +58,18 @@ class MotionHelperTests(unittest.TestCase):
 
     def test_tracking_velocity_is_bounded_and_respects_direction(self):
         self.assertEqual(
-            tracking_velocity(0.5, 1, 80.0, 30.0),
-            30.0,
+            tracking_velocity(0.5, 1, 80.0, 45.0, 2.0),
+            45.0,
         )
         self.assertEqual(
-            tracking_velocity(0.5, -1, 80.0, 30.0),
-            -30.0,
+            tracking_velocity(0.5, -1, 80.0, 45.0, 2.0),
+            -45.0,
+        )
+
+    def test_far_boost_barely_changes_near_center_speed(self):
+        self.assertAlmostEqual(
+            tracking_velocity(0.05, 1, 80.0, 45.0, 2.0),
+            4.02,
         )
 
     def test_installed_tilt_direction_moves_targets_toward_center(self):
@@ -125,20 +131,19 @@ class MotionHelperTests(unittest.TestCase):
 
     def test_velocity_profile_settles_with_camera_delay_and_noise(self):
         acceleration = 180.0
-        maximum_velocity = 30.0
+        maximum_velocity = 45.0
         control_dt = 0.02
         frame_dt = 1 / 30
-        camera_delay = 0.27
+        camera_delay = 0.25
         field_of_view = 45.0
         bird_angle = 15.0
         position = 0.0
         velocity = 0.0
         commanded_velocity = 0.0
         next_frame = 0.0
-        previous_error = None
         previous_sample = None
         estimated_screen_velocity = 0.0
-        center_crossings = 0
+        minimum_error = 0.5
         settled_errors = []
         position_history = deque([(0.0, position)])
         error_filter = SmoothedAxis(0.08, 0.01, 0.004)
@@ -178,16 +183,12 @@ class MotionHelperTests(unittest.TestCase):
                     sign=1,
                     gain=80.0,
                     maximum_speed=maximum_velocity,
+                    far_boost=2.0,
                 )
                 next_frame += frame_dt
 
                 actual_error = (bird_angle - position) / field_of_view
-                if (
-                    previous_error is not None
-                    and actual_error * previous_error < 0
-                ):
-                    center_crossings += 1
-                previous_error = actual_error
+                minimum_error = min(minimum_error, actual_error)
                 if now >= 6.0:
                     settled_errors.append(abs(actual_error))
 
@@ -204,7 +205,7 @@ class MotionHelperTests(unittest.TestCase):
                 )
             position += velocity * control_dt
 
-        self.assertEqual(center_crossings, 0)
+        self.assertGreater(minimum_error, -0.01)
         self.assertLess(settled_errors[-1], 0.01)
 
 

@@ -217,12 +217,14 @@ class BirdTrackerState(app_callback_class):
             config.PAN_SIGN,
             config.PAN_TRACK_GAIN,
             config.MAX_TARGET_SPEED,
+            config.FAR_BOOST,
         )
         tilt_velocity = tracking_velocity(
             filtered_y,
             config.TILT_SIGN,
             config.TILT_TRACK_GAIN,
             config.MAX_TARGET_SPEED,
+            config.FAR_BOOST,
         )
         return pan_velocity, tilt_velocity
 

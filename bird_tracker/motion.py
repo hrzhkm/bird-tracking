@@ -21,9 +21,10 @@ def frame_is_fresh(age, maximum_age):
     return age is not None and age <= maximum_age
 
 
-def tracking_velocity(error, sign, gain, maximum_speed):
+def tracking_velocity(error, sign, gain, maximum_speed, far_boost=0.0):
     """Convert image error into a bounded servo velocity."""
-    return sign * clamp(gain * error, -maximum_speed, maximum_speed)
+    velocity = gain * error * (1.0 + far_boost * error * error)
+    return sign * clamp(velocity, -maximum_speed, maximum_speed)
 
 
 def format_servo_command(pan_degrees, tilt_degrees):
