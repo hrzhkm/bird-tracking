@@ -26,15 +26,28 @@ def load_focus(path=FOCUS_FILE):
         return FOCUS_DEFAULT
 
 
-def focus_command(device, value=None):
+def focus_commands(device, value=None):
     if value is None:
-        control = "focus_automatic_continuous=1"
-    else:
-        control = (
-            "focus_automatic_continuous=0,"
-            f"focus_absolute={clamp_focus(value)}"
-        )
-    return ["v4l2-ctl", "-d", device, f"--set-ctrl={control}"]
+        return [[
+            "v4l2-ctl",
+            "-d",
+            device,
+            "--set-ctrl=focus_automatic_continuous=1",
+        ]]
+    return [
+        [
+            "v4l2-ctl",
+            "-d",
+            device,
+            "--set-ctrl=focus_automatic_continuous=0",
+        ],
+        [
+            "v4l2-ctl",
+            "-d",
+            device,
+            f"--set-ctrl=focus_absolute={clamp_focus(value)}",
+        ],
+    ]
 
 
 def create_focus_window(device):
@@ -76,33 +89,35 @@ def create_focus_window(device):
     row.pack_start(automatic, False, False, 0)
     row.pack_start(status, False, False, 0)
 
-    def apply(command):
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=2,
-            )
-        except (OSError, subprocess.TimeoutExpired) as error:
-            status.set_text("Camera unavailable")
-            print(f"[FOCUS] {error}", flush=True)
-            return False
-        if result.returncode == 0:
-            status.set_text("")
-            return True
-        status.set_text("Camera unavailable")
-        print(
-            f"[FOCUS] {result.stderr.strip() or 'camera control failed'}",
-            flush=True,
-        )
-        return False
+    def apply(commands):
+        for command in commands:
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+            except (OSError, subprocess.TimeoutExpired) as error:
+                status.set_text("Camera unavailable")
+                print(f"[FOCUS] {error}", flush=True)
+                return False
+            if result.returncode != 0:
+                status.set_text("Camera unavailable")
+                print(
+                    f"[FOCUS] "
+                    f"{result.stderr.strip() or 'camera control failed'}",
+                    flush=True,
+                )
+                return False
+        status.set_text("")
+        return True
 
     def apply_manual():
         nonlocal pending_update
         pending_update = None
         value = clamp_focus(scale.get_value())
-        if apply(focus_command(device, value)):
+        if apply(focus_commands(device, value)):
             try:
                 FOCUS_FILE.parent.mkdir(parents=True, exist_ok=True)
                 FOCUS_FILE.write_text(f"{value}\n")
@@ -126,7 +141,7 @@ def create_focus_window(device):
         enabled = button.get_active()
         scale.set_sensitive(not enabled)
         if enabled:
-            apply(focus_command(device))
+            apply(focus_commands(device))
         else:
             apply_manual()
 
