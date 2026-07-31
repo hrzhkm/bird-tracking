@@ -33,10 +33,10 @@ SERVO_ENABLED = os.environ.get("SERVO_ENABLED", "1") == "1"
 SERIAL_BAUD = 115200
 
 # Image X increases to the right and image Y increases downward. On the current
-# pan/tilt bracket, increasing the pan angle turns right and increasing the
+# pan/tilt bracket, increasing the pan angle turns right while decreasing the
 # tilt angle points down.
 PAN_SIGN = int(os.environ.get("SERVO_PAN_SIGN", "1"))
-TILT_SIGN = int(os.environ.get("SERVO_TILT_SIGN", "1"))
+TILT_SIGN = int(os.environ.get("SERVO_TILT_SIGN", "-1"))
 
 if PAN_SIGN not in (-1, 1) or TILT_SIGN not in (-1, 1):
     raise ValueError("SERVO_PAN_SIGN and SERVO_TILT_SIGN must be either -1 or 1")

@@ -82,7 +82,7 @@ servo coordinates. The configured defaults are tilt `100` and pan `90`. Values
 must remain within the ESP32 joint limits: pan `10..170`, tilt `35..135`.
 `SERVO_PAN_SIGN` and `SERVO_TILT_SIGN` control the tracking direction for each
 axis and must be `1` or `-1`. Image Y and the tilt servo angle both increase
-downward on this bracket, so the default tilt sign is `1`.
+in opposite directions on this bracket, so the default tilt sign is `-1`.
 
 Movement smoothing can be tuned in `.env`. `TRACKING_FILTER_TAU=0.08`
 filters detection noise, while `TRACKING_DEADZONE_ENTER=0.01` and

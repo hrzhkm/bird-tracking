@@ -66,17 +66,22 @@ class MotionHelperTests(unittest.TestCase):
             -30.0,
         )
 
-    def test_positive_vertical_error_commands_downward_tilt(self):
-        # Image Y increases downward, and increasing the installed tilt
-        # servo angle points the camera downward.
-        tilt = tracking_velocity(
+    def test_installed_tilt_direction_moves_targets_toward_center(self):
+        top = tracking_velocity(
+            error=-0.25,
+            sign=-1,
+            gain=60.0,
+            maximum_speed=30.0,
+        )
+        bottom = tracking_velocity(
             error=0.25,
-            sign=1,
+            sign=-1,
             gain=60.0,
             maximum_speed=30.0,
         )
 
-        self.assertGreater(tilt, 0.0)
+        self.assertGreater(top, 0.0)
+        self.assertLess(bottom, 0.0)
 
     def test_decimal_command_format(self):
         self.assertEqual(format_servo_command(70, 80.125), "70.00,80.12\n")
