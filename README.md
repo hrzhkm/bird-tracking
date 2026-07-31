@@ -49,6 +49,11 @@ camera. `MODEL_HEF_PATH` and `MODEL_LABELS_JSON` select the known-good custom
 `v0.0.4` Hailo-8 release when no production model is installed. Candidate and
 production slots override both paths. Motion speed is tuned independently
 below.
+
+USB cameras also open a small always-on-top focus panel. Drag the slider for
+manual focus or enable `Auto Focus` temporarily. The last successful manual
+focus value is restored from `~/.config/bird-tracker/focus` at startup.
+
 Inference and aggregation queues remain synchronized so detection metadata is
 attached to the correct video frame. Only whole frames are dropped before the
 split or after aggregation when the pipeline falls behind.
